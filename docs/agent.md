@@ -82,8 +82,8 @@ nostr-core supports multi-layer encrypted messaging:
 
 | Module | Description |
 |--------|-------------|
-| `nip59` | Gift Wrap — wraps events in 3 encryption layers (rumor → seal → gift wrap) to hide sender identity |
-| `nip17` | Private DMs — end-to-end encrypted direct messages with sender anonymity, built on NIP-59 |
+| `nip59` | Gift Wrap - wraps events in 3 encryption layers (rumor → seal → gift wrap) to hide sender identity |
+| `nip17` | Private DMs - end-to-end encrypted direct messages with sender anonymity, built on NIP-59 |
 
 See the API docs for [NIP-59](/api/nip59) and [NIP-17](/api/nip17).
 

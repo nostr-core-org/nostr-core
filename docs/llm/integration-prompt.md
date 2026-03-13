@@ -77,10 +77,14 @@ nostr-core provides a unified Signer interface for event signing:
 
 3. REMOTE SIGNER (NIP-46)
    import { NostrConnect } from 'nostr-core'
+   // Supports nostrconnect:// and bunker:// URIs, multiple relays, optional secret
    const signer = new NostrConnect('nostrconnect://<pubkey>?relay=wss://...')
-   await signer.connect()
+   // Or: new NostrConnect({ remotePubkey: '<hex>', relayUrls: ['wss://...'], secret: 'token' })
+   await signer.connect() // tries each relay until one succeeds
+   const methods = await signer.describe() // discover supported methods
+   const relays = await signer.getRelays() // get relay list
 
-All three: signer.getPublicKey(), signer.signEvent(template), signer.nip04?.encrypt/decrypt
+All signers: signer.getPublicKey(), signer.signEvent(template), signer.nip04?.encrypt/decrypt, signer.nip44?.encrypt/decrypt
 
 4. GIFT WRAP (NIP-59)
    import { nip59 } from 'nostr-core'

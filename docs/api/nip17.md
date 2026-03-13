@@ -1,6 +1,6 @@
 # NIP-17
 
-Private Direct Messages — end-to-end encrypted DMs with sender anonymity. Built on [NIP-59 Gift Wrap](/api/nip59) and [NIP-44 encryption](/api/nip44).
+Private Direct Messages - end-to-end encrypted DMs with sender anonymity. Built on [NIP-59 Gift Wrap](/api/nip59) and [NIP-44 encryption](/api/nip44).
 
 ## Import
 
@@ -42,9 +42,9 @@ Creates a private direct message wrapped in NIP-59 gift wrap. Produces a kind 10
 | `recipientPubkey` | `string` | Recipient's public key (64-char hex) |
 | `tags` | `string[][]?` | Additional tags (e.g., `['e', eventId]` for replies, `['subject', topic]`) |
 
-**Returns:** `NostrEvent` — kind 1059 gift wrap event.
+**Returns:** `NostrEvent` - kind 1059 gift wrap event.
 
-The returned event's `pubkey` is a random ephemeral key — the real sender is only visible after unwrapping.
+The returned event's `pubkey` is a random ephemeral key - the real sender is only visible after unwrapping.
 
 ```ts
 const wrap = nip17.wrapDirectMessage(
@@ -85,7 +85,7 @@ Unwraps a gift-wrapped direct message and returns the decrypted content with sen
 | `wrap` | `NostrEvent` | The kind 1059 gift wrap event |
 | `recipientSecretKey` | `Uint8Array` | Recipient's secret key (32 bytes) |
 
-**Returns:** `DirectMessage` — sender pubkey, content, tags, timestamp, and rumor id.
+**Returns:** `DirectMessage` - sender pubkey, content, tags, timestamp, and rumor id.
 
 **Throws:** `Error` on:
 - Invalid gift wrap or seal
@@ -111,7 +111,7 @@ const bobSk = generateSecretKey()
 const bobPk = getPublicKey(bobSk)
 
 const wrap = nip17.wrapDirectMessage('Hello Bob!', aliceSk, bobPk)
-// wrap.pubkey is a random ephemeral key — Alice is anonymous
+// wrap.pubkey is a random ephemeral key - Alice is anonymous
 
 // Bob unwraps the message
 const dm = nip17.unwrapDirectMessage(wrap, bobSk)
@@ -122,6 +122,6 @@ console.log(dm.content) // "Hello Bob!"
 ## How It Works
 
 1. Creates a kind 14 unsigned rumor with the message content and `['p', recipientPubkey]` tag
-2. Seals the rumor (kind 13) — NIP-44 encrypted with sender's key, signed by sender
-3. Gift wraps the seal (kind 1059) — NIP-44 encrypted with ephemeral key, `p` tag for routing
+2. Seals the rumor (kind 13) - NIP-44 encrypted with sender's key, signed by sender
+3. Gift wraps the seal (kind 1059) - NIP-44 encrypted with ephemeral key, `p` tag for routing
 4. On receive: unwraps, verifies seal signature, verifies pubkey consistency, returns message

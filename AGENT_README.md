@@ -441,7 +441,7 @@ Use these when your agent needs human input:
 
 ## Signer Abstraction (NIP-07 & NIP-46)
 
-nostr-core provides a unified `Signer` interface for event signing. All signers share the same API:
+nostr-core provides a unified `Signer` interface for event signing. All signers share the same API and support both NIP-04 and NIP-44 encryption:
 
 ```javascript
 // getPublicKey() and signEvent() work the same way regardless of backend
@@ -452,6 +452,12 @@ const signed = await signer.signEvent({
   tags: [],
   content: 'Hello Nostr!',
 })
+
+// NIP-04 encryption (all signers)
+const encrypted04 = await signer.nip04.encrypt(recipientPubkey, 'secret')
+
+// NIP-44 encryption (all signers - recommended)
+const encrypted44 = await signer.nip44.encrypt(recipientPubkey, 'secret')
 ```
 
 ### Secret Key Signer
@@ -475,15 +481,31 @@ const signer = new Nip07Signer() // throws Nip07NotAvailableError if no extensio
 
 ### Remote Signer (NIP-46 / Nostr Connect)
 
-Delegates signing to a remote signer (e.g. nsecBunker) over a relay:
+Delegates signing to a remote signer (e.g. nsecBunker) over relays. Supports `nostrconnect://` and `bunker://` URIs, multiple relays, and optional secret for authentication:
 
 ```javascript
 import { NostrConnect } from 'nostr-core'
 
+// From nostrconnect:// or bunker:// URI
 const signer = new NostrConnect('nostrconnect://<pubkey>?relay=wss://relay.example.com')
-await signer.connect()
+// bunker:// also works: new NostrConnect('bunker://<pubkey>?relay=wss://...')
 
-// Use signer...
+// Or from options (supports multiple relays)
+const signer = new NostrConnect({
+  remotePubkey: '<hex>',
+  relayUrls: ['wss://relay1.example.com', 'wss://relay2.example.com'],
+  secret: 'mytoken', // optional
+})
+
+await signer.connect() // tries each relay until one succeeds
+
+// NIP-04 and NIP-44 encryption via remote signer
+const encrypted04 = await signer.nip04.encrypt(recipientPubkey, 'secret')
+const encrypted44 = await signer.nip44.encrypt(recipientPubkey, 'secret')
+
+// Get relay list and discover supported methods
+const relays = await signer.getRelays()
+const methods = await signer.describe()
 
 await signer.disconnect()
 ```
@@ -519,7 +541,7 @@ const senderPk = getPublicKey(senderSk)
 const rumor = nip59.createRumor({ kind: 1, tags: [], content: 'Secret', created_at: Math.floor(Date.now() / 1000) }, senderPk)
 const seal = nip59.createSeal(rumor, senderSk, recipientPubkey)
 const wrap = nip59.createWrap(seal, recipientPubkey)
-// wrap.pubkey is ephemeral — real sender is hidden
+// wrap.pubkey is ephemeral - real sender is hidden
 
 // Unwrap
 const unwrapped = nip59.unwrap(wrap, recipientSecretKey)

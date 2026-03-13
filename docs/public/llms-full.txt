@@ -1,8 +1,8 @@
 # nostr-core - Full Documentation
 
-> Dead-simple, vendor-neutral NWC (Nostr Wallet Connect) client for JavaScript and TypeScript.
+> Dead-simple, vendor-neutral Nostr client library for JavaScript and TypeScript. Control any Lightning wallet via NIP-47, sign events with browser extensions (NIP-07) or remote signers (NIP-46), and send private encrypted messages (NIP-17/NIP-59).
 
-nostr-core is a lightweight library for interacting with Bitcoin Lightning wallets over the Nostr network using the NIP-47 protocol. Pass in a connection string, and start making payments, creating invoices, and listening for real-time notifications.
+nostr-core is a lightweight library for interacting with Bitcoin Lightning wallets over the Nostr network using the NIP-47 protocol, with a unified Signer interface for secret keys, browser extensions (NIP-07), and remote signers (NIP-46), plus gift wrapping (NIP-59) and private direct messages (NIP-17). Pass in a connection string, and start making payments, creating invoices, and listening for real-time notifications.
 
 ---
 
@@ -39,12 +39,14 @@ Beyond the NWC client, nostr-core also exports the low-level building blocks:
 |--------|-------------|
 | `NWC` | High-level wallet client |
 | `Relay` / `RelayPool` | WebSocket relay connections |
-| `Signer` | Unified signing interface (secret key, NIP-07, NIP-46) |
-| `Nip07Signer` | Browser extension signing (NIP-07) |
-| `NostrConnect` | Remote signing via Nostr Connect (NIP-46) |
-| `nip04` | AES-256-CBC encryption |
-| `nip44` | ChaCha20 encryption |
-| `nip19` | Bech32 encoding/decoding |
+| `Signer` | Unified signing interface (secret key, NIP-07, NIP-46) with NIP-04 and NIP-44 encryption |
+| `Nip07Signer` | Browser extension signing (NIP-07) with NIP-04 and NIP-44 encryption |
+| `NostrConnect` | Remote signing via Nostr Connect (NIP-46) with multi-relay and bunker:// support |
+| `nip04` | AES-256-CBC encryption (legacy) |
+| `nip44` | ChaCha20-Poly1305 encryption (recommended) |
+| `nip59` | Gift wrapping - multi-layer event encryption for metadata protection |
+| `nip17` | Private direct messages - end-to-end encrypted DMs with sender anonymity |
+| `nip19` | Bech32 encoding/decoding (npub, nsec, note, nprofile, nevent, naddr) |
 | `finalizeEvent` / `verifyEvent` | Event signing and verification |
 | `generateSecretKey` / `getPublicKey` | Key generation |
 | `Filter` / `matchFilter` | Event filtering |
@@ -1931,6 +1933,10 @@ interface Signer {
     encrypt(pubkey: string, plaintext: string): Promise<string>
     decrypt(pubkey: string, ciphertext: string): Promise<string>
   }
+  nip44?: {
+    encrypt(pubkey: string, plaintext: string): Promise<string>
+    decrypt(pubkey: string, ciphertext: string): Promise<string>
+  }
   getRelays?(): Promise<RelayMap>
 }
 
@@ -1947,6 +1953,14 @@ const signer = createSecretKeySigner(sk)
 
 const pubkey = await signer.getPublicKey()
 const signed = await signer.signEvent({ kind: 1, created_at: Math.floor(Date.now() / 1000), tags: [], content: 'Hello!' })
+
+// NIP-04 encryption
+const encrypted04 = await signer.nip04.encrypt(recipientPubkey, 'secret')
+const decrypted04 = await signer.nip04.decrypt(senderPubkey, encrypted04)
+
+// NIP-44 encryption (recommended)
+const encrypted44 = await signer.nip44.encrypt(recipientPubkey, 'secret')
+const decrypted44 = await signer.nip44.decrypt(senderPubkey, encrypted44)
 ```
 
 ---
@@ -1966,8 +1980,12 @@ const pubkey = await signer.getPublicKey()
 const signed = await signer.signEvent({ kind: 1, created_at: Math.floor(Date.now() / 1000), tags: [], content: 'Hello!' })
 
 // NIP-04 encryption (if supported by extension)
-const encrypted = await signer.nip04.encrypt(recipientPubkey, 'secret')
-const decrypted = await signer.nip04.decrypt(senderPubkey, encrypted)
+const encrypted04 = await signer.nip04.encrypt(recipientPubkey, 'secret')
+const decrypted04 = await signer.nip04.decrypt(senderPubkey, encrypted04)
+
+// NIP-44 encryption (if supported by extension - recommended)
+const encrypted44 = await signer.nip44.encrypt(recipientPubkey, 'secret')
+const decrypted44 = await signer.nip44.decrypt(senderPubkey, encrypted44)
 
 // Relay list (if supported by extension)
 const relays = await signer.getRelays()
@@ -1992,31 +2010,48 @@ const ext = getExtension() // returns window.nostr or throws Nip07NotAvailableEr
 
 # API Reference: NIP-46
 
-Nostr Connect - remote signing over relays via NIP-04 encrypted kind `24133` events.
+Nostr Connect - remote signing over relays via NIP-04 encrypted kind `24133` events. Supports `nostrconnect://` and `bunker://` URI prefixes, multiple relays, and optional secret for authentication.
 
 ## NostrConnect
 
 ```ts
 import { NostrConnect } from 'nostr-core'
 
-// From URI
+// From nostrconnect:// URI
 const signer = new NostrConnect('nostrconnect://<pubkey>?relay=wss://relay.example.com')
 
-// From options
-const signer = new NostrConnect({ remotePubkey: '<hex>', relayUrl: 'wss://relay.example.com' })
+// From bunker:// URI (also supported)
+const signer = new NostrConnect('bunker://<pubkey>?relay=wss://relay1.example.com&relay=wss://relay2.example.com&secret=mytoken')
 
-await signer.connect()
+// From options
+const signer = new NostrConnect({
+  remotePubkey: '<hex>',
+  relayUrls: ['wss://relay1.example.com', 'wss://relay2.example.com'],
+  secretKey: mySecretKey, // optional - random key generated if omitted
+  secret: 'mytoken',     // optional - sent with connect handshake
+})
+
+await signer.connect() // tries each relay until one succeeds
 
 const pubkey = await signer.getPublicKey()
 const signed = await signer.signEvent({ kind: 1, created_at: Math.floor(Date.now() / 1000), tags: [], content: 'Hello!' })
 
 // NIP-04 encryption via remote signer
-const encrypted = await signer.nip04.encrypt(recipientPubkey, 'secret')
+const encrypted04 = await signer.nip04.encrypt(recipientPubkey, 'secret')
+const decrypted04 = await signer.nip04.decrypt(senderPubkey, encrypted04)
 
-const methods = await signer.describe() // ['connect', 'sign_event', ...]
+// NIP-44 encryption via remote signer (recommended)
+const encrypted44 = await signer.nip44.encrypt(recipientPubkey, 'secret')
+const decrypted44 = await signer.nip44.decrypt(senderPubkey, encrypted44)
 
-await signer.disconnect() // graceful disconnect
-signer.close()            // immediate cleanup
+// Get relay list from remote signer
+const relays = await signer.getRelays()
+
+// Discover supported methods
+const methods = await signer.describe() // ['connect', 'sign_event', 'nip04_encrypt', 'nip44_encrypt', ...]
+
+await signer.disconnect() // graceful disconnect (sends disconnect RPC + closes relay)
+signer.close()            // immediate cleanup (no disconnect RPC)
 ```
 
 ## parseConnectionURI
@@ -2024,7 +2059,34 @@ signer.close()            // immediate cleanup
 ```ts
 import { parseConnectionURI } from 'nostr-core'
 
-const { remotePubkey, relayUrl } = parseConnectionURI('nostrconnect://<pubkey>?relay=wss://...')
+const { remotePubkey, relayUrls, secret, appMetadata } = parseConnectionURI('nostrconnect://<pubkey>?relay=wss://...')
+// relayUrls: string[] - supports multiple relay params
+// secret: string | undefined
+// appMetadata: { name?, url?, image? } | undefined
+```
+
+## Types
+
+```ts
+type Nip46ConnectionOptions = {
+  remotePubkey: string
+  relayUrls: string[]
+  secretKey?: Uint8Array
+  secret?: string
+}
+
+type Nip46Method =
+  | 'connect' | 'disconnect' | 'describe'
+  | 'get_public_key' | 'sign_event'
+  | 'nip04_encrypt' | 'nip04_decrypt'
+  | 'nip44_encrypt' | 'nip44_decrypt'
+  | 'get_relays'
+
+type Nip46AppMetadata = {
+  name?: string
+  url?: string
+  image?: string
+}
 ```
 
 ## Configuration
@@ -2046,7 +2108,7 @@ signer.timeout = 30000 // RPC timeout in ms (default: 60000)
 
 # API Reference: NIP-59
 
-Gift Wrap — wraps any Nostr event in multiple encryption layers to hide sender identity and metadata. Used by NIP-17 for private direct messages.
+Gift Wrap - wraps any Nostr event in multiple encryption layers to hide sender identity and metadata. Used by NIP-17 for private direct messages.
 
 ## Import
 
@@ -2105,15 +2167,15 @@ Unwraps a gift wrap: decrypts wrap, verifies seal signature, decrypts seal, vali
 
 ## How It Works
 
-1. **Rumor** — actual content, unsigned (deniability)
-2. **Seal** (kind 13) — encrypts rumor with NIP-44 (sender + recipient keys), signed by sender, empty tags
-3. **Gift Wrap** (kind 1059) — encrypts seal with NIP-44 (ephemeral + recipient keys), signed by ephemeral key, `p` tag for routing
+1. **Rumor** - actual content, unsigned (deniability)
+2. **Seal** (kind 13) - encrypts rumor with NIP-44 (sender + recipient keys), signed by sender, empty tags
+3. **Gift Wrap** (kind 1059) - encrypts seal with NIP-44 (ephemeral + recipient keys), signed by ephemeral key, `p` tag for routing
 
 ---
 
 # API Reference: NIP-17
 
-Private Direct Messages — end-to-end encrypted DMs with sender anonymity. Built on NIP-59 Gift Wrap and NIP-44 encryption.
+Private Direct Messages - end-to-end encrypted DMs with sender anonymity. Built on NIP-59 Gift Wrap and NIP-44 encryption.
 
 ## Import
 

@@ -239,7 +239,7 @@ const seal = nip59.createSeal(rumor, senderSk, recipientPk)
 
 // Gift wrap it (NIP-44 encrypt with ephemeral key, kind 1059)
 const wrap = nip59.createWrap(seal, recipientPk)
-// wrap.pubkey is ephemeral — sender identity is hidden
+// wrap.pubkey is ephemeral - sender identity is hidden
 
 // Recipient unwraps
 const unwrapped = nip59.unwrap(wrap, recipientSk)
@@ -259,7 +259,7 @@ console.log(unwrapped.content) // decrypted content
 
 ## Private Direct Messages (NIP-17)
 
-End-to-end encrypted DMs with sender anonymity. Built on NIP-59 gift wrap — creates kind 14 rumors wrapped in seal + gift wrap.
+End-to-end encrypted DMs with sender anonymity. Built on NIP-59 gift wrap - creates kind 14 rumors wrapped in seal + gift wrap.
 
 ```typescript
 import { nip17, generateSecretKey, getPublicKey } from 'nostr-core'
@@ -270,7 +270,7 @@ const bobPk = getPublicKey(bobSk)
 
 // Alice sends a private DM to Bob
 const wrap = nip17.wrapDirectMessage('Hello Bob!', aliceSk, bobPk)
-// wrap is a kind 1059 event — publish to Bob's preferred relays
+// wrap is a kind 1059 event - publish to Bob's preferred relays
 
 // Bob unwraps the DM
 const dm = nip17.unwrapDirectMessage(wrap, bobSk)
@@ -278,7 +278,7 @@ console.log(dm.sender)  // Alice's real pubkey
 console.log(dm.content) // "Hello Bob!"
 ```
 
-**Thread replies** — include tags referencing previous messages:
+**Thread replies** - include tags referencing previous messages:
 
 ```typescript
 const reply = nip17.wrapDirectMessage(
@@ -389,8 +389,11 @@ const signed = await signer.signEvent({
   content: 'Hello!',
 })
 
-// NIP-04 encryption is also available
-const encrypted = await signer.nip04!.encrypt(recipientPubkey, 'secret message')
+// NIP-04 encryption
+const encrypted04 = await signer.nip04!.encrypt(recipientPubkey, 'secret message')
+
+// NIP-44 encryption (recommended)
+const encrypted44 = await signer.nip44!.encrypt(recipientPubkey, 'secret message')
 ```
 
 ---
@@ -421,8 +424,12 @@ const signed = await signer.signEvent({
 })
 
 // NIP-04 encryption (if supported by extension)
-const encrypted = await signer.nip04.encrypt(recipientPubkey, 'secret')
-const decrypted = await signer.nip04.decrypt(senderPubkey, encrypted)
+const encrypted04 = await signer.nip04.encrypt(recipientPubkey, 'secret')
+const decrypted04 = await signer.nip04.decrypt(senderPubkey, encrypted04)
+
+// NIP-44 encryption (if supported by extension - recommended)
+const encrypted44 = await signer.nip44.encrypt(recipientPubkey, 'secret')
+const decrypted44 = await signer.nip44.decrypt(senderPubkey, encrypted44)
 
 // Relay list (if supported by extension)
 const relays = await signer.getRelays()
@@ -441,7 +448,7 @@ const relays = await signer.getRelays()
 
 ## Remote Signing (NIP-46 / Nostr Connect)
 
-Delegates signing to a remote signer (e.g. nsecBunker) over a relay using NIP-04 encrypted kind `24133` events:
+Delegates signing to a remote signer (e.g. nsecBunker) over relays using NIP-04 encrypted kind `24133` events. Supports `nostrconnect://` and `bunker://` URI prefixes, multiple relays, and optional secret for authentication:
 
 ```typescript
 import { NostrConnect, parseConnectionURI } from 'nostr-core'
@@ -449,14 +456,18 @@ import { NostrConnect, parseConnectionURI } from 'nostr-core'
 // From a nostrconnect:// URI
 const signer = new NostrConnect('nostrconnect://<remote-pubkey>?relay=wss://relay.example.com')
 
+// From a bunker:// URI (also supported)
+const signer = new NostrConnect('bunker://<remote-pubkey>?relay=wss://relay1.example.com&relay=wss://relay2.example.com&secret=mytoken')
+
 // Or from options
 const signer = new NostrConnect({
   remotePubkey: '<hex-pubkey>',
-  relayUrl: 'wss://relay.example.com',
+  relayUrls: ['wss://relay1.example.com', 'wss://relay2.example.com'],
   secretKey: mySecretKey,  // optional - random key generated if omitted
+  secret: 'mytoken',      // optional - sent with connect handshake
 })
 
-// Connect (relay connection + NIP-46 handshake)
+// Connect (tries each relay until one succeeds + NIP-46 handshake)
 await signer.connect()
 
 // Use like any other Signer
@@ -469,10 +480,16 @@ const signed = await signer.signEvent({
 })
 
 // NIP-04 encryption via remote signer
-const encrypted = await signer.nip04.encrypt(recipientPubkey, 'secret')
+const encrypted04 = await signer.nip04.encrypt(recipientPubkey, 'secret')
+
+// NIP-44 encryption via remote signer (recommended)
+const encrypted44 = await signer.nip44.encrypt(recipientPubkey, 'secret')
+
+// Get relay list from remote signer
+const relays = await signer.getRelays()
 
 // Discover supported methods
-const methods = await signer.describe()  // ['connect', 'sign_event', ...]
+const methods = await signer.describe()  // ['connect', 'sign_event', 'nip44_encrypt', ...]
 
 // Graceful disconnect (sends disconnect RPC + closes relay)
 await signer.disconnect()
@@ -492,7 +509,10 @@ signer.timeout = 30000  // RPC timeout in ms (default: 60000)
 ```typescript
 import { parseConnectionURI } from 'nostr-core'
 
-const { remotePubkey, relayUrl } = parseConnectionURI('nostrconnect://<pubkey>?relay=wss://...')
+const { remotePubkey, relayUrls, secret, appMetadata } = parseConnectionURI('nostrconnect://<pubkey>?relay=wss://...')
+// relayUrls: string[] - supports multiple relay params
+// secret: string | undefined
+// appMetadata: { name?, url?, image? } | undefined
 ```
 
 **Error classes:**

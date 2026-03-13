@@ -1,6 +1,6 @@
 # NIP-59
 
-Gift Wrap — wraps any Nostr event in multiple encryption layers to hide sender identity and metadata. Used by [NIP-17](/api/nip17) for private direct messages.
+Gift Wrap - wraps any Nostr event in multiple encryption layers to hide sender identity and metadata. Used by [NIP-17](/api/nip17) for private direct messages.
 
 ## Import
 
@@ -38,7 +38,7 @@ Creates an unsigned event (rumor) with a computed id.
 | `event` | `EventTemplate` | Event template (kind, tags, content, created_at) |
 | `senderPubkey` | `string` | Sender's public key (64-char hex) |
 
-**Returns:** `Rumor` — unsigned event with id.
+**Returns:** `Rumor` - unsigned event with id.
 
 ```ts
 const rumor = nip59.createRumor(
@@ -70,7 +70,7 @@ Encrypts a rumor into a kind 13 seal using NIP-44. The seal is signed by the sen
 | `senderSecretKey` | `Uint8Array` | Sender's secret key (32 bytes) |
 | `recipientPubkey` | `string` | Recipient's public key (64-char hex) |
 
-**Returns:** `NostrEvent` — signed kind 13 event.
+**Returns:** `NostrEvent` - signed kind 13 event.
 
 ```ts
 const seal = nip59.createSeal(rumor, senderSecretKey, recipientPubkey)
@@ -89,11 +89,11 @@ Wraps a seal in a kind 1059 gift wrap using a random ephemeral keypair. The wrap
 | `seal` | `NostrEvent` | The kind 13 seal to wrap |
 | `recipientPubkey` | `string` | Recipient's public key (64-char hex) |
 
-**Returns:** `NostrEvent` — signed kind 1059 event (signed by the ephemeral key).
+**Returns:** `NostrEvent` - signed kind 1059 event (signed by the ephemeral key).
 
 ```ts
 const wrap = nip59.createWrap(seal, recipientPubkey)
-// wrap.pubkey is the ephemeral key — sender identity is hidden
+// wrap.pubkey is the ephemeral key - sender identity is hidden
 ```
 
 ## nip59.unwrap
@@ -109,7 +109,7 @@ Unwraps a gift wrap to recover the original rumor. Decrypts the wrap, verifies t
 | `wrap` | `NostrEvent` | The kind 1059 gift wrap event |
 | `recipientSecretKey` | `Uint8Array` | Recipient's secret key (32 bytes) |
 
-**Returns:** `Rumor` — the original unsigned event.
+**Returns:** `Rumor` - the original unsigned event.
 
 **Throws:** `Error` on:
 - Wrong event kind
@@ -127,8 +127,8 @@ console.log(rumor.content) // decrypted content
 
 Three layers protect metadata:
 
-1. **Rumor** — the actual content, unsigned (deniability)
-2. **Seal** (kind 13) — encrypts the rumor with NIP-44 using `sender + recipient` keys, signed by sender, empty tags, randomized timestamp
-3. **Gift Wrap** (kind 1059) — encrypts the seal with NIP-44 using `ephemeral + recipient` keys, signed by ephemeral key, `p` tag for routing
+1. **Rumor** - the actual content, unsigned (deniability)
+2. **Seal** (kind 13) - encrypts the rumor with NIP-44 using `sender + recipient` keys, signed by sender, empty tags, randomized timestamp
+3. **Gift Wrap** (kind 1059) - encrypts the seal with NIP-44 using `ephemeral + recipient` keys, signed by ephemeral key, `p` tag for routing
 
-Relays and observers only see the ephemeral pubkey and the recipient — they cannot determine the real sender or read the content.
+Relays and observers only see the ephemeral pubkey and the recipient - they cannot determine the real sender or read the content.

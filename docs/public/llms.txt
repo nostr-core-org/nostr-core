@@ -1,8 +1,8 @@
 # nostr-core
 
-> Dead-simple, vendor-neutral NWC (Nostr Wallet Connect) client library for JavaScript/TypeScript. Control any Lightning wallet programmatically via NIP-47.
+> Dead-simple, vendor-neutral Nostr client library for JavaScript/TypeScript. Control any Lightning wallet via NIP-47, sign events with browser extensions (NIP-07) or remote signers (NIP-46), and send private encrypted messages (NIP-17/NIP-59).
 
-nostr-core lets agents and applications pay invoices, check balances, create invoices, and listen for payments through any NWC-compatible Lightning wallet. One connection string, zero framework dependencies, auto-encryption. Works in Node.js 18+, Deno, Bun, and Cloudflare Workers. Free and open source (MIT).
+nostr-core lets agents and applications pay invoices, check balances, create invoices, and listen for payments through any NWC-compatible Lightning wallet. Beyond wallet operations, it provides a unified Signer interface for secret keys, browser extensions, and remote signers, plus gift wrapping (NIP-59) for metadata protection and private direct messages (NIP-17). One connection string, zero framework dependencies, auto-encryption. Works in Node.js 18+, Deno, Bun, and Cloudflare Workers. Free and open source (MIT).
 
 ## Guides
 
@@ -33,8 +33,8 @@ nostr-core lets agents and applications pay invoices, check balances, create inv
 - [NIP-44](api/nip44.md): ChaCha20 authenticated encryption (recommended)
 - [NIP-19](api/nip19.md): Bech32 encoding/decoding (npub, nsec, note, nprofile, nevent, naddr)
 - [NIP-46](api/nip46.md): Remote signing via Nostr Connect (NostrConnect class)
-- [NIP-59](api/nip59.md): Gift Wrap — multi-layer event encryption for metadata protection (createRumor, createSeal, createWrap, unwrap)
-- [NIP-17](api/nip17.md): Private Direct Messages — end-to-end encrypted DMs with sender anonymity (wrapDirectMessage, unwrapDirectMessage)
+- [NIP-59](api/nip59.md): Gift Wrap - multi-layer event encryption for metadata protection (createRumor, createSeal, createWrap, unwrap)
+- [NIP-17](api/nip17.md): Private Direct Messages - end-to-end encrypted DMs with sender anonymity (wrapDirectMessage, unwrapDirectMessage)
 - [Utils](api/utils.md): normalizeURL, bytesToHex, hexToBytes, randomBytes
 
 ## Agent Integration

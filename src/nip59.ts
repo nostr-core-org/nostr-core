@@ -105,7 +105,7 @@ export function unwrap(
 
   // Verify pubkey consistency: seal.pubkey must match rumor.pubkey
   if (seal.pubkey !== rumor.pubkey) {
-    throw new Error('Seal pubkey does not match rumor pubkey — possible impersonation')
+    throw new Error('Seal pubkey does not match rumor pubkey - possible impersonation')
   }
 
   return rumor
