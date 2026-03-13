@@ -27,12 +27,12 @@ nostr-core lets agents and applications pay invoices, check balances, create inv
 - [Relay](api/relay.md): Single relay WebSocket connection and subscriptions
 - [RelayPool](api/pool.md): Multi-relay connection management
 - [Filter](api/filter.md): Event filtering types and match functions
-- [Signer](api/signer.md): Unified Signer interface for secret keys, browser extensions (NIP-07), and remote signers (NIP-46)
+- [Signer](api/signer.md): Unified Signer interface for secret keys, browser extensions (NIP-07), and remote signers (NIP-46) with NIP-04 and NIP-44 encryption
 - [NIP-04](api/nip04.md): AES-256-CBC encryption (legacy)
-- [NIP-07](api/nip07.md): Browser extension signing via window.nostr (Nip07Signer)
+- [NIP-07](api/nip07.md): Browser extension signing via window.nostr (Nip07Signer) with NIP-04 and NIP-44 encryption
 - [NIP-44](api/nip44.md): ChaCha20 authenticated encryption (recommended)
 - [NIP-19](api/nip19.md): Bech32 encoding/decoding (npub, nsec, note, nprofile, nevent, naddr)
-- [NIP-46](api/nip46.md): Remote signing via Nostr Connect (NostrConnect class)
+- [NIP-46](api/nip46.md): Remote signing via Nostr Connect (NostrConnect class) - bunker:// URIs, multi-relay fallback, NIP-44 encryption, app metadata
 - [NIP-59](api/nip59.md): Gift Wrap - multi-layer event encryption for metadata protection (createRumor, createSeal, createWrap, unwrap)
 - [NIP-17](api/nip17.md): Private Direct Messages - end-to-end encrypted DMs with sender anonymity (wrapDirectMessage, unwrapDirectMessage)
 - [Utils](api/utils.md): normalizeURL, bytesToHex, hexToBytes, randomBytes
