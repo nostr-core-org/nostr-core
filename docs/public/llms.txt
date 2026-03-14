@@ -27,11 +27,11 @@ nostr-core lets agents and applications pay invoices, check balances, create inv
 - [Relay](api/relay.md): Single relay WebSocket connection and subscriptions
 - [RelayPool](api/pool.md): Multi-relay connection management
 - [Filter](api/filter.md): Event filtering types and match functions
-- [Signer](api/signer.md): Unified Signer interface for secret keys, browser extensions (NIP-07), and remote signers (NIP-46)
+- [Signer](api/signer.md): Unified Signer interface for secret keys, browser extensions (NIP-07), and remote signers (NIP-46) with NIP-04 and NIP-44 encryption
 - [NIP-04](api/nip04.md): AES-256-CBC encryption (legacy)
 - [NIP-05](api/nip05.md): DNS-based verification (queryNip05, verifyNip05, parseNip05Address)
 - [NIP-06](api/nip06.md): Key derivation from mnemonic (generateMnemonic, mnemonicToKey, deriveKey)
-- [NIP-07](api/nip07.md): Browser extension signing via window.nostr (Nip07Signer)
+- [NIP-07](api/nip07.md): Browser extension signing via window.nostr (Nip07Signer) with NIP-04 and NIP-44 encryption
 - [NIP-09](api/nip09.md): Event deletion (createDeletionEvent, parseDeletion, isDeletionOf)
 - [NIP-10](api/nip10.md): Text note threads (parseThread, buildThreadTags)
 - [NIP-11](api/nip11.md): Relay information document (fetchRelayInfo, supportsNip)
@@ -48,7 +48,7 @@ nostr-core lets agents and applications pay invoices, check balances, create inv
 - [NIP-31](api/nip31.md): Unknown event kinds (addAltTag, getAltTag)
 - [NIP-42](api/nip42.md): Client authentication to relays (createAuthEvent, verifyAuthEvent, relay.auth)
 - [NIP-44](api/nip44.md): ChaCha20 authenticated encryption (recommended)
-- [NIP-46](api/nip46.md): Remote signing via Nostr Connect (NostrConnect class)
+- [NIP-46](api/nip46.md): Remote signing via Nostr Connect (NostrConnect class) - bunker:// URIs, multi-relay fallback, NIP-44 encryption, app metadata
 - [NIP-51](api/nip51.md): Lists with encrypted private items (createListEvent, parseList)
 - [NIP-57](api/nip57.md): Lightning zaps (createZapRequestEvent, parseZapReceipt, validateZapReceipt, fetchZapInvoice)
 - [NIP-58](api/nip58.md): Badges (createBadgeDefinitionEvent, createBadgeAwardEvent, parseBadgeDefinition)
