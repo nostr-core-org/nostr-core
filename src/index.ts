@@ -43,6 +43,35 @@ export {
 // Lightning Address
 export { fetchInvoice, validateLightningAddress, parseLightningAddress } from './lightning-address.js'
 
+// LNURL Protocol
+export * as lnurl from './lnurl.js'
+export {
+  encodeLnurl,
+  decodeLnurl,
+  isLnurl,
+  resolveUrl as resolveLnurl,
+  fetchPayRequest,
+  requestInvoice as requestLnurlInvoice,
+  fetchWithdrawRequest,
+  submitWithdrawRequest,
+  parseLnurlMetadata,
+  parseSuccessAction,
+  decryptAesSuccessAction,
+  verifyPayment,
+  LnurlError,
+} from './lnurl.js'
+export type {
+  SuccessAction,
+  PayerDataSpec,
+  PayerData,
+  LnurlMetadata,
+  PayRequestResponse,
+  PayRequestCallbackResponse,
+  WithdrawRequestResponse,
+  VerifyResponse as LnurlVerifyResponse,
+  RequestInvoiceOptions,
+} from './lnurl.js'
+
 // Fiat Conversion
 export { getExchangeRate, fiatToSats, satsToFiat } from './fiat.js'
 

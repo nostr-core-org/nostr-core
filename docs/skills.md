@@ -114,6 +114,7 @@ Comprehensive Nostr protocol toolkit (37 NIPs) for custom application developmen
 - Reporting (NIP-56), Lightning zaps (NIP-57), badges (NIP-58)
 - Relay-based groups (NIP-29)
 - HTTP authentication (NIP-98)
+- LNURL protocol (LUD-01/03/06/09/10/12/17/18/20/21) - encoding, pay requests, withdraw requests, success actions
 - Event filtering and matching
 - NWC protocol internals
 
@@ -149,6 +150,9 @@ Comprehensive Nostr protocol toolkit (37 NIPs) for custom application developmen
 /nostr-primitives proxy
 /nostr-primitives search
 /nostr-primitives report
+/nostr-primitives lnurl
+/nostr-primitives lnurl-pay
+/nostr-primitives lnurl-withdraw
 ```
 
 ## How Skills Work

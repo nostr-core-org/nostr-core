@@ -77,6 +77,20 @@
     "expiration",
     "proxy-tags",
     "search",
-    "reporting"
+    "reporting",
+    "lnurl",
+    "lud-01",
+    "lud-03",
+    "lud-06",
+    "lud-09",
+    "lud-10",
+    "lud-12",
+    "lud-17",
+    "lud-18",
+    "lud-20",
+    "lud-21",
+    "pay-request",
+    "withdraw-request",
+    "success-action"
   ]
 }

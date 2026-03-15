@@ -64,6 +64,7 @@ nostr-core lets agents and applications pay invoices, check balances, create inv
 - [NIP-59](api/nip59.md): Gift Wrap - multi-layer event encryption for metadata protection (createRumor, createSeal, createWrap, unwrap)
 - [NIP-65](api/nip65.md): Relay List Metadata - user relay preferences for read/write routing (parseRelayList, createRelayListEvent, getReadRelays, getWriteRelays)
 - [NIP-98](api/nip98.md): HTTP Auth (createHttpAuthEvent, getAuthorizationHeader, verifyHttpAuthEvent)
+- LNURL Protocol: encodeLnurl(), decodeLnurl(), isLnurl(), resolveUrl(), fetchPayRequest(), requestInvoice(), fetchWithdrawRequest(), submitWithdrawRequest(), parseLnurlMetadata(), parseSuccessAction(), decryptAesSuccessAction(), verifyPayment() — LUD-01/03/06/09/10/12/17/18/20/21
 - [Utils](api/utils.md): normalizeURL, bytesToHex, hexToBytes, randomBytes
 
 ## Agent Integration

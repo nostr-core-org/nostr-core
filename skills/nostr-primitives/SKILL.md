@@ -2,7 +2,7 @@
 name: nostr-primitives
 description: Use nostr-core's low-level Nostr protocol primitives to build custom applications. Covers 37 NIPs including key generation, event signing, relay connections, encryption (NIP-04/NIP-44), gift wrapping (NIP-59), relay metadata (NIP-65), private DMs (NIP-17), bech32 encoding (NIP-19), URI scheme (NIP-21), threads (NIP-10), reactions (NIP-25), deletion (NIP-09), comments (NIP-22), long-form content (NIP-23), lists (NIP-51), zaps (NIP-57), badges (NIP-58), groups (NIP-29), DNS verification (NIP-05), relay info (NIP-11), HTTP auth (NIP-98), and more.
 user-invocable: true
-argument-hint: "[keys, events, relays, encryption, giftwrap, relaylist, dm, encoding, signer, nip07, nip46, deletion, threads, reactions, comments, articles, lists, zaps, badges, groups, dns, auth, emoji, or uri]"
+argument-hint: "[keys, events, relays, encryption, giftwrap, relaylist, dm, encoding, signer, nip07, nip46, deletion, threads, reactions, comments, articles, lists, zaps, badges, groups, dns, auth, emoji, uri, lnurl, lnurl-pay, or lnurl-withdraw]"
 ---
 
 # Nostr Protocol Primitives with nostr-core
@@ -1111,6 +1111,83 @@ const eventReport = nip56.createReportEvent(
 )
 
 const parsed = nip56.parseReport(reportEvent) // { targets, content }
+```
+
+---
+
+## LNURL Protocol (LUD-01/03/06/09/10/12/17/18/20/21)
+
+Encode, decode, and interact with LNURL services.
+
+### Encoding / Decoding
+
+```typescript
+import { lnurl } from 'nostr-core'
+
+// Encode a URL to LNURL bech32
+const encoded = lnurl.encodeLnurl('https://service.com/api?q=pay') // 'LNURL1...'
+
+// Decode LNURL back to URL
+const url = lnurl.decodeLnurl('LNURL1...') // 'https://service.com/api?q=pay'
+
+// Check if a string is a valid LNURL
+lnurl.isLnurl('LNURL1...') // true
+
+// Resolve any LNURL-compatible input (LNURL, lightning address, raw URL)
+const resolvedUrl = lnurl.resolveUrl('LNURL1...')
+```
+
+### Pay Requests (LUD-06/12/17/18)
+
+```typescript
+import { lnurl } from 'nostr-core'
+
+// Fetch pay request from LNURL
+const payReq = await lnurl.fetchPayRequest('LNURL1...')
+// { callback, minSendable, maxSendable, metadata, tag: 'payRequest', ... }
+
+// Parse metadata
+const metadata = lnurl.parseLnurlMetadata(payReq.metadata)
+// [['text/plain', 'Pay to service'], ['image/png;base64', '...']]
+
+// Request an invoice
+const { invoice, successAction } = await lnurl.requestInvoice({
+  payRequest: payReq,
+  amountMsats: 10000,
+  comment: 'Thanks!', // optional (LUD-12)
+})
+
+// Handle success action (LUD-09/10)
+if (successAction) {
+  const action = lnurl.parseSuccessAction(successAction)
+  if (action.tag === 'aes') {
+    const decrypted = lnurl.decryptAesSuccessAction(action, preimage)
+  }
+}
+```
+
+### Withdraw Requests (LUD-03)
+
+```typescript
+import { lnurl } from 'nostr-core'
+
+// Fetch withdraw request
+const withdrawReq = await lnurl.fetchWithdrawRequest('LNURL1...')
+// { callback, k1, minWithdrawable, maxWithdrawable, defaultDescription, tag: 'withdrawRequest' }
+
+// Submit with your invoice
+await lnurl.submitWithdrawRequest({
+  withdrawRequest: withdrawReq,
+  invoice: 'lnbc10u1pj...',
+})
+```
+
+### Payment Verification (LUD-21)
+
+```typescript
+import { lnurl } from 'nostr-core'
+
+const valid = lnurl.verifyPayment(payResponse) // boolean
 ```
 
 ---

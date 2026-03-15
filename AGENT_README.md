@@ -1007,6 +1007,86 @@ const parsed = nip56.parseReport(report) // { targets: [...], content }
 
 ---
 
+## LNURL Protocol (LUD-01/03/06/09/10/12/17/18/20/21)
+
+Encode, decode, and interact with LNURL services for pay requests, withdraw requests, and success actions.
+
+### Encoding / Decoding
+
+```javascript
+import { lnurl } from 'nostr-core'
+
+// Encode a URL to LNURL bech32 format
+const encoded = lnurl.encodeLnurl('https://service.com/api?q=pay')
+// 'LNURL1...'
+
+// Decode an LNURL back to URL
+const url = lnurl.decodeLnurl('LNURL1...')
+// 'https://service.com/api?q=pay'
+
+// Check if a string is a valid LNURL
+const valid = lnurl.isLnurl('LNURL1...') // true
+
+// Resolve any LNURL-compatible input (LNURL, lightning address, raw URL)
+const resolvedUrl = lnurl.resolveUrl('LNURL1...')
+```
+
+### Pay Requests (LUD-06/12/17/18)
+
+```javascript
+import { lnurl } from 'nostr-core'
+
+// Fetch a pay request from an LNURL
+const payReq = await lnurl.fetchPayRequest('LNURL1...')
+// { callback, minSendable, maxSendable, metadata, tag: 'payRequest', ... }
+
+// Parse metadata from the pay request
+const metadata = lnurl.parseLnurlMetadata(payReq.metadata)
+// [['text/plain', 'Pay to service'], ['image/png;base64', '...']]
+
+// Request an invoice for a specific amount
+const { invoice, successAction } = await lnurl.requestInvoice({
+  payRequest: payReq,
+  amountMsats: 10000,
+  comment: 'Great work!', // optional (LUD-12)
+})
+
+// Handle success action (LUD-09/10)
+if (successAction) {
+  const action = lnurl.parseSuccessAction(successAction)
+  if (action.tag === 'aes') {
+    const decrypted = lnurl.decryptAesSuccessAction(action, preimage)
+    console.log('Secret message:', decrypted)
+  }
+}
+```
+
+### Withdraw Requests (LUD-03)
+
+```javascript
+import { lnurl } from 'nostr-core'
+
+// Fetch a withdraw request
+const withdrawReq = await lnurl.fetchWithdrawRequest('LNURL1...')
+// { callback, k1, minWithdrawable, maxWithdrawable, defaultDescription, tag: 'withdrawRequest' }
+
+// Submit a withdraw request with your invoice
+await lnurl.submitWithdrawRequest({
+  withdrawRequest: withdrawReq,
+  invoice: 'lnbc10u1pj...',
+})
+```
+
+### Payment Verification (LUD-21)
+
+```javascript
+import { lnurl } from 'nostr-core'
+
+const isValid = lnurl.verifyPayment(payResponse)
+```
+
+---
+
 ## Lightning Zaps (NIP-57)
 
 Create zap requests and parse zap receipts.

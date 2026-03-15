@@ -2650,6 +2650,118 @@ Verifies kind, signature, timestamp (within 60s), URL, method, and body payload 
 
 ---
 
+# API Reference: LNURL Protocol
+
+LNURL Protocol - bech32-encoded HTTP query strings for Lightning Network service discovery and interaction. Implements LUD-01 (encoding), LUD-03 (withdraw), LUD-06 (pay request), LUD-09/10 (success actions), LUD-12 (comments), LUD-17 (protocol schemes), LUD-18 (payer data), LUD-20 (pay link metadata), and LUD-21 (payment verification).
+
+## Import
+
+```ts
+import { lnurl } from 'nostr-core'
+```
+
+## lnurl.encodeLnurl
+
+```ts
+function encodeLnurl(url: string): string
+```
+
+Encodes a URL into a bech32-encoded LNURL string. Returns an uppercase `LNURL1...` string.
+
+## lnurl.decodeLnurl
+
+```ts
+function decodeLnurl(lnurlString: string): string
+```
+
+Decodes a bech32-encoded LNURL string back to the original URL.
+
+## lnurl.isLnurl
+
+```ts
+function isLnurl(str: string): boolean
+```
+
+Checks if a string is a valid LNURL (case-insensitive, checks bech32 encoding).
+
+## lnurl.resolveUrl
+
+```ts
+function resolveUrl(input: string): string
+```
+
+Resolves any LNURL-compatible input (LNURL bech32, lightning address, or raw URL) to a service URL.
+
+## lnurl.fetchPayRequest
+
+```ts
+async function fetchPayRequest(lnurlOrUrl: string): Promise<LnurlPayResponse>
+```
+
+Fetches a pay request from an LNURL or URL. Returns the LNURL-pay service response.
+
+`LnurlPayResponse = { callback: string, minSendable: number, maxSendable: number, metadata: string, tag: 'payRequest', commentAllowed?: number, allowsNostr?: boolean, nostrPubkey?: string }`
+
+## lnurl.requestInvoice
+
+```ts
+async function requestInvoice(opts: { payRequest: LnurlPayResponse, amountMsats: number, comment?: string, payerData?: PayerData }): Promise<{ invoice: string, successAction?: SuccessAction }>
+```
+
+Requests an invoice from the LNURL-pay callback for a specific amount. Optional comment (LUD-12) and payer data (LUD-18).
+
+## lnurl.fetchWithdrawRequest
+
+```ts
+async function fetchWithdrawRequest(lnurlOrUrl: string): Promise<LnurlWithdrawResponse>
+```
+
+Fetches a withdraw request from an LNURL or URL.
+
+`LnurlWithdrawResponse = { callback: string, k1: string, minWithdrawable: number, maxWithdrawable: number, defaultDescription: string, tag: 'withdrawRequest' }`
+
+## lnurl.submitWithdrawRequest
+
+```ts
+async function submitWithdrawRequest(opts: { withdrawRequest: LnurlWithdrawResponse, invoice: string }): Promise<{ status: string }>
+```
+
+Submits a withdraw request with a Lightning invoice to receive funds.
+
+## lnurl.parseLnurlMetadata
+
+```ts
+function parseLnurlMetadata(metadata: string): Array<[string, string]>
+```
+
+Parses the JSON-encoded metadata string from a pay request into an array of `[mimeType, content]` tuples.
+
+## lnurl.parseSuccessAction
+
+```ts
+function parseSuccessAction(action: SuccessAction): SuccessAction
+```
+
+Parses and validates a success action response. Success action types: `{ tag: 'message', message: string }`, `{ tag: 'url', description: string, url: string }`, `{ tag: 'aes', description: string, ciphertext: string, iv: string }`.
+
+## lnurl.decryptAesSuccessAction
+
+```ts
+function decryptAesSuccessAction(action: AesSuccessAction, preimage: string): string
+```
+
+Decrypts an AES success action (LUD-10) using the payment preimage as the decryption key. Returns the decrypted plaintext.
+
+## lnurl.verifyPayment
+
+```ts
+function verifyPayment(payResponse: PayResponse): boolean
+```
+
+Verifies a payment response from an LNURL service (LUD-21).
+
+---
+
 # API Reference: NIP-04
 
 AES-256-CBC encryption for Nostr direct messages (legacy).

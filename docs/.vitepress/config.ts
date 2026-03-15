@@ -121,6 +121,13 @@ export default defineConfig({
             ],
           },
           {
+            text: 'Protocols',
+            collapsed: true,
+            items: [
+              { text: 'LNURL Protocol', link: '/api/lnurl' },
+            ],
+          },
+          {
             text: 'Utilities',
             collapsed: true,
             items: [

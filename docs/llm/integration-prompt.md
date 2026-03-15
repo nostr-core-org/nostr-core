@@ -258,6 +258,20 @@ All signers: signer.getPublicKey(), signer.signEvent(template), signer.nip04?.en
     const authEvent = nip98.createHttpAuthEvent({ url, method, body? }, sk)
     const header = nip98.getAuthorizationHeader(authEvent) // "Nostr <base64>"
 
+35. LNURL PROTOCOL (LUD-01/03/06/09/10/12/17/18/20/21)
+    import { lnurl } from 'nostr-core'
+    const encoded = lnurl.encodeLnurl('https://service.com/api?q=pay') // 'LNURL1...'
+    const decoded = lnurl.decodeLnurl('LNURL1...') // 'https://service.com/api?q=pay'
+    const isValid = lnurl.isLnurl('LNURL1...') // boolean
+    const payReq = await lnurl.fetchPayRequest('LNURL1...') // LnurlPayResponse
+    const invoice = await lnurl.requestInvoice({ payRequest, amountMsats, comment? })
+    const withdrawReq = await lnurl.fetchWithdrawRequest('LNURL1...') // LnurlWithdrawResponse
+    await lnurl.submitWithdrawRequest({ withdrawRequest, invoice })
+    const metadata = lnurl.parseLnurlMetadata(payReq.metadata) // ParsedMetadata[]
+    const action = lnurl.parseSuccessAction(successAction) // SuccessAction
+    const decrypted = lnurl.decryptAesSuccessAction(aesAction, preimage) // plaintext
+    const valid = lnurl.verifyPayment(payResponse) // boolean
+
 ## Rules
 - All amounts are in millisatoshis (1 sat = 1000 msats)
 - Always call connect() before operations and close() when done
