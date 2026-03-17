@@ -1,9 +1,20 @@
-# nostr-core
+# nostr-core - Dead-simple & vendor-neutral
 
-Dead-simple, vendor-neutral [Nostr Wallet Connect (NWC)](https://github.com/nostr-protocol/nips/blob/master/47.md) client for JavaScript and TypeScript.
+**nostr-core** is a comprehensive JavaScript/TypeScript toolkit for building engaging [Nostr](https://nostr.com) applications. With support for 36+ NIPs out of the box, it covers everything from core protocol primitives to advanced social, payments, and identity features — giving you a single, well-typed foundation to build on.
 
-[Demo](https://nostr-core-demo.netlify.app/)
+**Why nostr-core?**
 
+* 📡 Protocol Complete - 36+ NIPs implemented and ready to use, from basics to cutting-edge
+* ⚡ NWC & Lightning - First-class Nostr Wallet Connect support for seamless payment flows
+* 🔐 Identity & Auth - Key management, NIP-07 browser signing, and bunker/remote signer support
+* 🎯 Relay Management - Smart relay abstraction with connection pooling and event routing
+* 🛠️ TypeScript Native - Fully typed, modern APIs designed for developer confidence
+* 🧩 Composable - Headless and framework-agnostic; drop it into any stack
+* 📦 Modular - Use only what you need, scale as your app grows
+
+**Built for builders who want to ship**, not fight the protocol. [Demo](https://nostr-core-demo.netlify.app/)
+
+ [Nostr Wallet Connect (NWC)](https://github.com/nostr-protocol/nips/blob/master/47.md) 
 ```ts
 import { NWC } from 'nostr-core'
 
