@@ -252,13 +252,37 @@ All signers: signer.getPublicKey(), signer.signEvent(template), signer.nip04?.en
     import { nip58 } from 'nostr-core'
     nip58.createBadgeDefinitionEvent({ identifier, name, description }, sk)
     nip58.createBadgeAwardEvent({ badgeAddress, recipients }, sk)
+    nip58.createBadgeRequestTemplate({ badgeAddress, proof: { type: 'payment', preimage, invoice } })
+    nip58.createBadgeAcceptanceEvent({ requestEventId, badgeAddress, recipientPubkey }, sk)
+    nip58.createBadgeRejectionEvent({ requestEventId, badgeAddress, reason? }, sk)
+    nip58.extractBadgeProof(event) // BadgeProof | undefined
+    nip58.hasBeenAwarded(pubkey, awards) // boolean
 
-34. HTTP AUTH (NIP-98)
+34. CALENDAR EVENTS (NIP-52)
+    import { nip52 } from 'nostr-core'
+    nip52.createDateBasedCalendarEvent({ identifier, title, start, end?, locations? }, sk) // kind 31922
+    nip52.createTimeBasedCalendarEvent({ identifier, title, start, end?, startTzid? }, sk) // kind 31923
+    nip52.createCalendarEvent({ identifier, title, eventAddresses? }, sk) // kind 31924
+    nip52.createCalendarEventRSVP({ identifier, calendarEventAddress, status }, sk) // kind 31925
+    nip52.parseDateBasedCalendarEvent(event) // DateBasedCalendarEvent
+    nip52.parseTimeBasedCalendarEvent(event) // TimeBasedCalendarEvent
+    nip52.parseCalendar(event) // Calendar
+    nip52.parseCalendarEventRSVP(event) // CalendarEventRSVP
+
+35. ZAP GOALS (NIP-75)
+    import { nip75 } from 'nostr-core'
+    nip75.createZapGoalEvent({ content, amount, relays, closedAt?, beneficiaries? }, sk) // kind 9041
+    nip75.parseZapGoal(event) // ZapGoal
+    nip75.isZapGoalOpen(event) // boolean
+    nip75.calculateZapGoalProgress(zapReceipts) // number (msats)
+    nip75.buildGoalTag(goalEventId, relay?) // ['goal', id, relay?]
+
+36. HTTP AUTH (NIP-98)
     import { nip98 } from 'nostr-core'
     const authEvent = nip98.createHttpAuthEvent({ url, method, body? }, sk)
     const header = nip98.getAuthorizationHeader(authEvent) // "Nostr <base64>"
 
-35. LNURL PROTOCOL (LUD-01/03/06/09/10/12/17/18/20/21)
+37. LNURL PROTOCOL (LUD-01/03/06/09/10/12/17/18/20/21)
     import { lnurl } from 'nostr-core'
     const encoded = lnurl.encodeLnurl('https://service.com/api?q=pay') // 'LNURL1...'
     const decoded = lnurl.decodeLnurl('LNURL1...') // 'https://service.com/api?q=pay'

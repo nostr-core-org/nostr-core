@@ -194,7 +194,7 @@ With 81% fewer dependencies, `nostr-core` still implements every NIP-47 method.
 
 ## Low-Level Building Blocks
 
-`nostr-core` exports **37 NIP implementations** so you don't need a separate `nostr-tools` install:
+`nostr-core` exports **39 NIP implementations** so you don't need a separate `nostr-tools` install:
 
 - **Keys**: `generateSecretKey`, `getPublicKey`, `nip06` (BIP-39 mnemonic derivation)
 - **Events**: `finalizeEvent`, `verifyEvent`, `getEventHash`
@@ -206,7 +206,9 @@ With 81% fewer dependencies, `nostr-core` still implements every NIP-47 method.
 - **Content**: `nip23` (long-form), `nip27` (references), `nip30` (emoji), `nip31` (alt tags), `nip36` (content warnings)
 - **Messaging**: `nip17`/`nip59` (private DMs), `nip28` (public chat channels)
 - **Discovery**: `nip50` (search), `nip51` (lists), `nip56` (reporting), `nip58` (badges)
+- **Calendar**: `nip52` (date-based events, time-based events, calendars, RSVP)
 - **Utility**: `nip13` (proof of work), `nip40` (expiration), `nip48` (proxy tags), `nip57` (zaps)
+- **Fundraising**: `nip75` (zap goals with beneficiaries and progress tracking)
 - **LNURL**: `lnurl` (LUD-01/03/06/09/10/12/17/18/20/21 — pay requests, withdraw requests, success actions, payer identity)
 - **Filtering**: `matchFilter`, `matchFilters`
 

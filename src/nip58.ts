@@ -172,20 +172,28 @@ export function parseProfileBadges(event: NostrEvent): ProfileBadge[] {
   return badges
 }
 
-// Extended Badge Proofs
+// Extended Badge Proofs — Badges as Identity Verifiers
+
+export type BadgeProofPow = { type: 'pow'; difficulty: number; nonce: string }
+export type BadgeProofPayment = { type: 'payment'; preimage: string; invoice: string }
+export type BadgeProofMembership = { type: 'membership'; groupId: string; membershipEventId: string }
 
 export type BadgeProof =
-  | { type: 'pow'; difficulty: number; nonce: string }
-  | { type: 'payment'; preimage: string; invoice: string }
-  | { type: 'membership'; groupId: string; membershipEventId: string }
+  | BadgeProofPow
+  | BadgeProofPayment
+  | BadgeProofMembership
 
 export type BadgeRequest = {
   badgeAddress: string
   proof?: BadgeProof
+  content?: string
 }
 
 /**
- * Create a badge request event template with optional proof.
+ * Create a badge request event template (kind 8433) with optional proof.
+ * This is a custom request flow — the requester publishes a request referencing
+ * a badge definition, along with a proof that qualifies them for the badge.
+ * The badge issuer can then verify the proof and award the badge.
  */
 export function createBadgeRequestTemplate(request: BadgeRequest): EventTemplate {
   const tags: string[][] = [['a', request.badgeAddress]]
@@ -205,17 +213,34 @@ export function createBadgeRequestTemplate(request: BadgeRequest): EventTemplate
   }
 
   return {
-    kind: 8,
+    kind: 8433,
     tags,
-    content: '',
+    content: request.content ?? '',
     created_at: Math.floor(Date.now() / 1000),
   }
 }
 
 /**
- * Verify a badge proof from event tags.
+ * Parse a badge request event (kind 8433).
  */
-export function verifyBadgeProof(event: NostrEvent): BadgeProof | undefined {
+export function parseBadgeRequest(event: NostrEvent): BadgeRequest {
+  const result: BadgeRequest = { badgeAddress: '' }
+
+  for (const tag of event.tags) {
+    if (tag[0] === 'a') result.badgeAddress = tag[1]
+  }
+
+  const proof = extractBadgeProof(event)
+  if (proof) result.proof = proof
+  if (event.content) result.content = event.content
+
+  return result
+}
+
+/**
+ * Extract a badge proof from event tags.
+ */
+export function extractBadgeProof(event: NostrEvent): BadgeProof | undefined {
   const proofTag = event.tags.find(t => t[0] === 'proof')
   if (!proofTag) return undefined
 
@@ -232,6 +257,11 @@ export function verifyBadgeProof(event: NostrEvent): BadgeProof | undefined {
 }
 
 /**
+ * @deprecated Use `extractBadgeProof` instead.
+ */
+export const verifyBadgeProof = extractBadgeProof
+
+/**
  * Validate that a badge award event references the correct badge definition.
  */
 export function validateBadgeAward(award: NostrEvent, definition: NostrEvent): boolean {
@@ -246,4 +276,84 @@ export function validateBadgeAward(award: NostrEvent, definition: NostrEvent): b
   // Address format: kind:pubkey:identifier
   const expectedAddress = `30009:${definition.pubkey}:${defIdentifier}`
   return awardAddress === expectedAddress
+}
+
+// ── Badge Acceptance / Rejection (Request Flow) ────────────────────────
+
+export type BadgeAcceptance = {
+  requestEventId: string
+  badgeAddress: string
+  recipientPubkey: string
+}
+
+export type BadgeRejection = {
+  requestEventId: string
+  badgeAddress: string
+  reason?: string
+}
+
+/**
+ * Create a badge acceptance event template (kind 8434).
+ * Published by the badge issuer to accept a badge request and implicitly award.
+ */
+export function createBadgeAcceptanceTemplate(acceptance: BadgeAcceptance): EventTemplate {
+  return {
+    kind: 8434,
+    tags: [
+      ['e', acceptance.requestEventId],
+      ['a', acceptance.badgeAddress],
+      ['p', acceptance.recipientPubkey],
+    ],
+    content: '',
+    created_at: Math.floor(Date.now() / 1000),
+  }
+}
+
+/**
+ * Create and sign a badge acceptance event.
+ */
+export function createBadgeAcceptanceEvent(acceptance: BadgeAcceptance, secretKey: Uint8Array): NostrEvent {
+  return finalizeEvent(createBadgeAcceptanceTemplate(acceptance), secretKey)
+}
+
+/**
+ * Create a badge rejection event template (kind 8435).
+ * Published by the badge issuer to reject a badge request.
+ */
+export function createBadgeRejectionTemplate(rejection: BadgeRejection): EventTemplate {
+  return {
+    kind: 8435,
+    tags: [
+      ['e', rejection.requestEventId],
+      ['a', rejection.badgeAddress],
+    ],
+    content: rejection.reason ?? '',
+    created_at: Math.floor(Date.now() / 1000),
+  }
+}
+
+/**
+ * Create and sign a badge rejection event.
+ */
+export function createBadgeRejectionEvent(rejection: BadgeRejection, secretKey: Uint8Array): NostrEvent {
+  return finalizeEvent(createBadgeRejectionTemplate(rejection), secretKey)
+}
+
+// ── Badge Utility: Build address from definition ───────────────────────
+
+/**
+ * Build a badge address string (`30009:pubkey:identifier`) from a badge definition event.
+ */
+export function buildBadgeAddress(definition: NostrEvent): string {
+  const identifier = definition.tags.find(t => t[0] === 'd')?.[1] ?? ''
+  return `30009:${definition.pubkey}:${identifier}`
+}
+
+/**
+ * Check if a user has been awarded a specific badge by inspecting badge award events.
+ */
+export function hasBeenAwarded(pubkey: string, badgeAwards: NostrEvent[]): boolean {
+  return badgeAwards.some(
+    award => award.kind === 8 && award.tags.some(t => t[0] === 'p' && t[1] === pubkey),
+  )
 }

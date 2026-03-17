@@ -1144,6 +1144,77 @@ const header = nip98.getAuthorizationHeader(authEvent) // "Nostr <base64>"
 
 ---
 
+## Calendar Events (NIP-52)
+
+```typescript
+import { nip52 } from 'nostr-core'
+
+// Date-based event (kind 31922)
+const dateEvent = nip52.createDateBasedCalendarEvent({
+  identifier: 'retreat-2026',
+  title: 'Team Retreat',
+  start: '2026-06-15',
+  end: '2026-06-18',
+  locations: ['Lake Tahoe'],
+  participants: [{ pubkey: teammatePk, role: 'attendee' }],
+}, secretKey)
+
+// Time-based event (kind 31923)
+const timeEvent = nip52.createTimeBasedCalendarEvent({
+  identifier: 'standup-daily',
+  title: 'Daily Standup',
+  start: 1742212800,
+  end: 1742214600,
+  startTzid: 'America/New_York',
+}, secretKey)
+
+// Calendar collection (kind 31924)
+const calendar = nip52.createCalendarEvent({
+  identifier: 'work-cal',
+  title: 'Work Calendar',
+  eventAddresses: [nip52.buildCalendarEventAddress(31923, pk, 'standup-daily')],
+}, secretKey)
+
+// RSVP (kind 31925)
+const rsvp = nip52.createCalendarEventRSVP({
+  identifier: 'rsvp-retreat',
+  calendarEventAddress: `31922:${pk}:retreat-2026`,
+  status: 'accepted',
+  freebusy: 'busy',
+}, secretKey)
+
+// Parse
+const parsed = nip52.parseDateBasedCalendarEvent(event)
+const rsvpParsed = nip52.parseCalendarEventRSVP(rsvpEvent)
+```
+
+---
+
+## Zap Goals (NIP-75)
+
+```typescript
+import { nip75 } from 'nostr-core'
+
+// Create a fundraising goal (kind 9041)
+const goal = nip75.createZapGoalEvent({
+  content: 'Help fund our open source relay!',
+  amount: 1000000000, // 1M sats in msats
+  relays: ['wss://relay.damus.io'],
+  closedAt: Math.floor(Date.now() / 1000) + 86400 * 30,
+  beneficiaries: [{ pubkey: devPk, weight: '1' }],
+}, secretKey)
+
+// Parse and track progress
+const parsed = nip75.parseZapGoal(goalEvent)
+const isOpen = nip75.isZapGoalOpen(goalEvent) // boolean
+const progress = nip75.calculateZapGoalProgress(zapReceipts) // msats
+
+// Link a goal to an addressable event
+const goalTag = nip75.buildGoalTag(goalEvent.id, 'wss://relay.damus.io')
+```
+
+---
+
 ## Links
 
 - **npm:** https://www.npmjs.com/package/nostr-core
@@ -1151,7 +1222,10 @@ const header = nip98.getAuthorizationHeader(authEvent) // "Nostr <base64>"
 - **NIP-47 Spec:** https://github.com/nostr-protocol/nips/blob/master/47.md
 - **NIP-07 Spec:** https://github.com/nostr-protocol/nips/blob/master/07.md
 - **NIP-46 Spec:** https://github.com/nostr-protocol/nips/blob/master/46.md
+- **NIP-52 Spec:** https://github.com/nostr-protocol/nips/blob/master/52.md
+- **NIP-58 Spec:** https://github.com/nostr-protocol/nips/blob/master/58.md
 - **NIP-59 Spec:** https://github.com/nostr-protocol/nips/blob/master/59.md
 - **NIP-65 Spec:** https://github.com/nostr-protocol/nips/blob/master/65.md
+- **NIP-75 Spec:** https://github.com/nostr-protocol/nips/blob/master/75.md
 - **NIP-17 Spec:** https://github.com/nostr-protocol/nips/blob/master/17.md
 - **License:** MIT

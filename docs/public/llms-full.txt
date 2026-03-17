@@ -2605,13 +2605,107 @@ function parseProfileBadges(event: NostrEvent): ProfileBadge[]
 
 `ProfileBadge = { badgeAddress, awardEventId }`
 
-## Extended Proofs
+## Extended Proofs & Request Flow
 
 ```ts
-function createBadgeRequestTemplate(request: BadgeRequest): EventTemplate
-function verifyBadgeProof(event: NostrEvent): BadgeProof | undefined
+function createBadgeRequestTemplate(request: BadgeRequest): EventTemplate  // kind 8433
+function parseBadgeRequest(event: NostrEvent): BadgeRequest
+function extractBadgeProof(event: NostrEvent): BadgeProof | undefined
 function validateBadgeAward(award: NostrEvent, definition: NostrEvent): boolean
+function createBadgeAcceptanceTemplate(acceptance: BadgeAcceptance): EventTemplate  // kind 8434
+function createBadgeAcceptanceEvent(acceptance: BadgeAcceptance, secretKey: Uint8Array): NostrEvent
+function createBadgeRejectionTemplate(rejection: BadgeRejection): EventTemplate  // kind 8435
+function createBadgeRejectionEvent(rejection: BadgeRejection, secretKey: Uint8Array): NostrEvent
+function buildBadgeAddress(definition: NostrEvent): string
+function hasBeenAwarded(pubkey: string, badgeAwards: NostrEvent[]): boolean
 ```
+
+`BadgeProof = { type: 'pow', difficulty, nonce } | { type: 'payment', preimage, invoice } | { type: 'membership', groupId, membershipEventId }`
+
+---
+
+# API Reference: NIP-52
+
+Calendar Events - kind 31922 date-based events, kind 31923 time-based events, kind 31924 calendars, kind 31925 RSVPs.
+
+## Import
+
+```ts
+import { nip52 } from 'nostr-core'
+```
+
+## Date-Based Calendar Event (kind 31922)
+
+```ts
+function createDateBasedCalendarEventTemplate(event: DateBasedCalendarEvent): EventTemplate
+function createDateBasedCalendarEvent(event: DateBasedCalendarEvent, secretKey: Uint8Array): NostrEvent
+function parseDateBasedCalendarEvent(event: NostrEvent): DateBasedCalendarEvent
+```
+
+`DateBasedCalendarEvent = { identifier, title, start (YYYY-MM-DD), end?, content?, summary?, image?, locations?, geohash?, participants?, hashtags?, references?, calendarAddresses? }`
+
+## Time-Based Calendar Event (kind 31923)
+
+```ts
+function createTimeBasedCalendarEventTemplate(event: TimeBasedCalendarEvent): EventTemplate
+function createTimeBasedCalendarEvent(event: TimeBasedCalendarEvent, secretKey: Uint8Array): NostrEvent
+function parseTimeBasedCalendarEvent(event: NostrEvent): TimeBasedCalendarEvent
+```
+
+`TimeBasedCalendarEvent = { identifier, title, start (unix), end?, startTzid?, endTzid?, content?, summary?, image?, locations?, participants?, hashtags? }`
+
+## Calendar (kind 31924)
+
+```ts
+function createCalendarTemplate(calendar: Calendar): EventTemplate
+function createCalendarEvent(calendar: Calendar, secretKey: Uint8Array): NostrEvent
+function parseCalendar(event: NostrEvent): Calendar
+```
+
+`Calendar = { identifier, title, content?, eventAddresses? }`
+
+## RSVP (kind 31925)
+
+```ts
+function createCalendarEventRSVPTemplate(rsvp: CalendarEventRSVP): EventTemplate
+function createCalendarEventRSVP(rsvp: CalendarEventRSVP, secretKey: Uint8Array): NostrEvent
+function parseCalendarEventRSVP(event: NostrEvent): CalendarEventRSVP
+```
+
+`CalendarEventRSVP = { identifier, calendarEventAddress, status: 'accepted'|'declined'|'tentative', eventId?, freebusy?: 'free'|'busy', calendarEventAuthor?, content? }`
+
+## Utilities
+
+```ts
+function buildCalendarEventAddress(kind: 31922 | 31923, pubkey: string, identifier: string): string
+function isCalendarEvent(event: NostrEvent): boolean
+```
+
+---
+
+# API Reference: NIP-75
+
+Zap Goals - kind 9041 fundraising goals with beneficiaries and progress tracking.
+
+## Import
+
+```ts
+import { nip75 } from 'nostr-core'
+```
+
+## Zap Goal (kind 9041)
+
+```ts
+function createZapGoalTemplate(goal: ZapGoal): EventTemplate
+function createZapGoalEvent(goal: ZapGoal, secretKey: Uint8Array): NostrEvent
+function parseZapGoal(event: NostrEvent): ZapGoal
+function isZapGoalOpen(event: NostrEvent): boolean
+function calculateZapGoalProgress(zapReceipts: NostrEvent[]): number
+function buildGoalTag(goalEventId: string, relay?: string): string[]
+```
+
+`ZapGoal = { content, amount (msats), relays, closedAt?, image?, summary?, references?, addresses?, beneficiaries?: ZapBeneficiary[] }`
+`ZapBeneficiary = { pubkey, relay?, weight? }`
 
 ---
 

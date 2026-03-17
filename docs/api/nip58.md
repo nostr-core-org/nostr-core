@@ -18,8 +18,15 @@ import {
   createProfileBadgesEvent,
   parseProfileBadges,
   createBadgeRequestTemplate,
-  verifyBadgeProof,
+  parseBadgeRequest,
+  extractBadgeProof,
   validateBadgeAward,
+  createBadgeAcceptanceTemplate,
+  createBadgeAcceptanceEvent,
+  createBadgeRejectionTemplate,
+  createBadgeRejectionEvent,
+  buildBadgeAddress,
+  hasBeenAwarded,
 } from 'nostr-core'
 ```
 
@@ -92,6 +99,7 @@ type BadgeProof =
 type BadgeRequest = {
   badgeAddress: string
   proof?: BadgeProof
+  content?: string
 }
 ```
 
@@ -99,6 +107,39 @@ type BadgeRequest = {
 |-------|------|-------------|
 | `badgeAddress` | `string` | Badge being requested |
 | `proof` | `BadgeProof` (optional) | Proof to include with the request |
+| `content` | `string` (optional) | Human-readable request message |
+
+## BadgeAcceptance Type
+
+```ts
+type BadgeAcceptance = {
+  requestEventId: string
+  badgeAddress: string
+  recipientPubkey: string
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `requestEventId` | `string` | ID of the kind 8433 badge request event |
+| `badgeAddress` | `string` | Badge being accepted |
+| `recipientPubkey` | `string` | Pubkey of the requester to award |
+
+## BadgeRejection Type
+
+```ts
+type BadgeRejection = {
+  requestEventId: string
+  badgeAddress: string
+  reason?: string
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `requestEventId` | `string` | ID of the kind 8433 badge request event |
+| `badgeAddress` | `string` | Badge being rejected |
+| `reason` | `string` (optional) | Reason for rejection |
 
 ## nip58.createBadgeDefinitionTemplate
 
@@ -319,22 +360,37 @@ Creates a badge request event template with optional proof.
 |-----------|------|-------------|
 | `request` | `BadgeRequest` | Badge address and optional proof |
 
-**Returns:** `EventTemplate` - Unsigned kind 8 event with `a` and optional `proof` tags.
+**Returns:** `EventTemplate` - Unsigned kind 8433 event with `a` and optional `proof` tags.
 
 ```ts
 const template = nip58.createBadgeRequestTemplate({
   badgeAddress: '30009:issuer:verified',
   proof: { type: 'payment', preimage: 'abc123...', invoice: 'lnbc...' },
+  content: 'Requesting verified badge after payment',
 })
 ```
 
-## nip58.verifyBadgeProof
+## nip58.parseBadgeRequest
 
 ```ts
-function verifyBadgeProof(event: NostrEvent): BadgeProof | undefined
+function parseBadgeRequest(event: NostrEvent): BadgeRequest
 ```
 
-Extracts and parses a badge proof from an event's tags.
+Parses a kind 8433 badge request event.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `event` | `NostrEvent` | A kind 8433 event |
+
+**Returns:** `BadgeRequest` - Parsed badge address, proof, and content.
+
+## nip58.extractBadgeProof
+
+```ts
+function extractBadgeProof(event: NostrEvent): BadgeProof | undefined
+```
+
+Extracts and parses a badge proof from an event's `proof` tag.
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
@@ -343,10 +399,70 @@ Extracts and parses a badge proof from an event's tags.
 **Returns:** `BadgeProof | undefined` - Parsed proof, or `undefined` if no valid proof tag exists.
 
 ```ts
-const proof = nip58.verifyBadgeProof(requestEvent)
+const proof = nip58.extractBadgeProof(requestEvent)
 if (proof?.type === 'payment') {
   console.log(`Payment proof: ${proof.preimage}`)
 }
+```
+
+## nip58.createBadgeAcceptanceTemplate / createBadgeAcceptanceEvent
+
+```ts
+function createBadgeAcceptanceTemplate(acceptance: BadgeAcceptance): EventTemplate
+function createBadgeAcceptanceEvent(acceptance: BadgeAcceptance, secretKey: Uint8Array): NostrEvent
+```
+
+Creates a kind 8434 badge acceptance event, published by the badge issuer to accept a badge request.
+
+```ts
+const acceptance = nip58.createBadgeAcceptanceEvent({
+  requestEventId: requestEvent.id,
+  badgeAddress: '30009:issuer:verified',
+  recipientPubkey: requesterPk,
+}, issuerSecretKey)
+```
+
+## nip58.createBadgeRejectionTemplate / createBadgeRejectionEvent
+
+```ts
+function createBadgeRejectionTemplate(rejection: BadgeRejection): EventTemplate
+function createBadgeRejectionEvent(rejection: BadgeRejection, secretKey: Uint8Array): NostrEvent
+```
+
+Creates a kind 8435 badge rejection event, published by the badge issuer to reject a badge request.
+
+```ts
+const rejection = nip58.createBadgeRejectionEvent({
+  requestEventId: requestEvent.id,
+  badgeAddress: '30009:issuer:verified',
+  reason: 'Payment proof could not be verified',
+}, issuerSecretKey)
+```
+
+## nip58.buildBadgeAddress
+
+```ts
+function buildBadgeAddress(definition: NostrEvent): string
+```
+
+Builds a badge address string (`30009:pubkey:identifier`) from a badge definition event.
+
+```ts
+const address = nip58.buildBadgeAddress(badgeDefEvent)
+// '30009:abc123...:early-adopter'
+```
+
+## nip58.hasBeenAwarded
+
+```ts
+function hasBeenAwarded(pubkey: string, badgeAwards: NostrEvent[]): boolean
+```
+
+Checks if a user has been awarded a specific badge by inspecting an array of badge award events.
+
+```ts
+const awarded = nip58.hasBeenAwarded(userPk, badgeAwardEvents)
+if (awarded) console.log('User has this badge!')
 ```
 
 ## nip58.validateBadgeAward
@@ -449,6 +565,20 @@ pool.close()
 - Badge addresses follow the format `30009:issuer-pubkey:identifier`
 - Profile badges are stored as alternating `a` (badge address) and `e` (award event ID) tag pairs
 - `validateBadgeAward` verifies the award's `a` tag matches the expected `kind:pubkey:identifier` format
-- Badge proofs (PoW, payment, membership) allow automated badge issuance workflows
 - Only the badge issuer can create valid award events (verified by checking the award event's pubkey)
 - Users choose which badges to display by publishing their own kind 30008 event
+
+### Badge Request Flow (Custom Extension)
+
+The request flow extends NIP-58 with three additional event kinds for requesting, accepting, and rejecting badges:
+
+- **Kind 8433** — Badge Request: a user requests a badge with optional proof (PoW, payment, or membership)
+- **Kind 8434** — Badge Acceptance: the issuer accepts the request and implicitly awards the badge
+- **Kind 8435** — Badge Rejection: the issuer rejects the request with an optional reason
+
+**Badges as Identity Verifiers:**
+
+Badges can serve as decentralized identity proofs:
+- **Proof of Work** — the requester demonstrates computational effort (e.g., mining a nonce with target difficulty)
+- **Proof of Payment** — the requester proves a Lightning payment via preimage and invoice
+- **Proof of Membership** — the requester proves membership in a group via a group membership event reference

@@ -4,7 +4,7 @@ layout: home
 hero:
   name: nostr-core
   text: The complete Nostr toolkit
-  tagline: 37 NIPs, NWC wallet client, and protocol primitives for JavaScript and TypeScript
+  tagline: 39 NIPs, NWC wallet client, and protocol primitives for JavaScript and TypeScript
   image:
     src: /nwc-logo.svg
     alt: nostr-core
@@ -38,7 +38,7 @@ hero:
   />
   <FeatureCard
     icon="lucide:layers"
-    title="37 NIPs Supported"
+    title="39 NIPs Supported"
     details="Social (reactions, threads, reposts), identity (follows, badges, DNS), privacy (gift wrap, DMs), and much more."
     color="#897FFF"
   />
@@ -59,7 +59,7 @@ hero:
 <div class="stat-banner">
   <StatCard number="4" label="dependencies" description="Audited Noble crypto" />
   <StatCard number="82%" label="fewer packages" description="vs @getalby/sdk" />
-  <StatCard number="37" label="NIPs supported" description="Full protocol coverage" />
+  <StatCard number="39" label="NIPs supported" description="Full protocol coverage" />
 </div>
 
 <div class="quick-example">
@@ -84,7 +84,7 @@ nwc.close()
 
 ## How does nostr-core compare?
 
-37 NIPs, full LNURL protocol, 82% fewer packages, zero vendor lock-in.
+39 NIPs, full LNURL protocol, 82% fewer packages, zero vendor lock-in.
 
 [See the full comparison →](/guide/comparison)
 

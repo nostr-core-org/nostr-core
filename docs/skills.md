@@ -89,7 +89,7 @@ Monitor wallet activity and analyze transaction history. Covers:
 
 ### `/nostr-primitives` - Nostr Protocol Building Blocks
 
-Comprehensive Nostr protocol toolkit (37 NIPs) for custom application development. Covers:
+Comprehensive Nostr protocol toolkit (39 NIPs) for custom application development. Covers:
 
 - Key generation, management, and BIP-39 mnemonic derivation (NIP-06)
 - Event creation, signing, and verification
@@ -112,7 +112,9 @@ Comprehensive Nostr protocol toolkit (37 NIPs) for custom application developmen
 - Proxy tags for bridged events (NIP-48), search (NIP-50)
 - Lists with encrypted private items (NIP-51)
 - Reporting (NIP-56), Lightning zaps (NIP-57), badges (NIP-58)
+- Calendar events, calendars, RSVP (NIP-52)
 - Relay-based groups (NIP-29)
+- Zap goals with beneficiaries (NIP-75)
 - HTTP authentication (NIP-98)
 - LNURL protocol (LUD-01/03/06/09/10/12/17/18/20/21) - encoding, pay requests, withdraw requests, success actions
 - Event filtering and matching
@@ -150,6 +152,8 @@ Comprehensive Nostr protocol toolkit (37 NIPs) for custom application developmen
 /nostr-primitives proxy
 /nostr-primitives search
 /nostr-primitives report
+/nostr-primitives calendars
+/nostr-primitives zapgoals
 /nostr-primitives lnurl
 /nostr-primitives lnurl-pay
 /nostr-primitives lnurl-withdraw

@@ -1,8 +1,8 @@
 ---
 name: nostr-primitives
-description: Use nostr-core's low-level Nostr protocol primitives to build custom applications. Covers 37 NIPs including key generation, event signing, relay connections, encryption (NIP-04/NIP-44), gift wrapping (NIP-59), relay metadata (NIP-65), private DMs (NIP-17), bech32 encoding (NIP-19), URI scheme (NIP-21), threads (NIP-10), reactions (NIP-25), deletion (NIP-09), comments (NIP-22), long-form content (NIP-23), lists (NIP-51), zaps (NIP-57), badges (NIP-58), groups (NIP-29), DNS verification (NIP-05), relay info (NIP-11), HTTP auth (NIP-98), and more.
+description: Use nostr-core's low-level Nostr protocol primitives to build custom applications. Covers 39 NIPs including key generation, event signing, relay connections, encryption (NIP-04/NIP-44), gift wrapping (NIP-59), relay metadata (NIP-65), private DMs (NIP-17), bech32 encoding (NIP-19), URI scheme (NIP-21), threads (NIP-10), reactions (NIP-25), deletion (NIP-09), comments (NIP-22), long-form content (NIP-23), lists (NIP-51), zaps (NIP-57), badges (NIP-58), groups (NIP-29), DNS verification (NIP-05), relay info (NIP-11), HTTP auth (NIP-98), and more.
 user-invocable: true
-argument-hint: "[keys, events, relays, encryption, giftwrap, relaylist, dm, encoding, signer, nip07, nip46, deletion, threads, reactions, comments, articles, lists, zaps, badges, groups, dns, auth, emoji, uri, lnurl, lnurl-pay, or lnurl-withdraw]"
+argument-hint: "[keys, events, relays, encryption, giftwrap, relaylist, dm, encoding, signer, nip07, nip46, deletion, threads, reactions, comments, articles, lists, zaps, badges, calendars, zapgoals, groups, dns, auth, emoji, uri, lnurl, lnurl-pay, or lnurl-withdraw]"
 ---
 
 # Nostr Protocol Primitives with nostr-core
@@ -1247,6 +1247,128 @@ const profile = nip58.createProfileBadgesEvent([
 const def = nip58.parseBadgeDefinition(badge)     // { identifier, name, description, ... }
 const awd = nip58.parseBadgeAward(award)           // { badgeAddress, recipients }
 const badges = nip58.parseProfileBadges(profile)   // [{ badgeAddress, awardEventId }]
+
+// Badge Request Flow (custom extension)
+// Request a badge with proof-of-payment (kind 8433)
+const request = nip58.createBadgeRequestTemplate({
+  badgeAddress: `30009:${issuerPk}:verified`,
+  proof: { type: 'payment', preimage: 'abc123...', invoice: 'lnbc...' },
+  content: 'Requesting verified badge',
+})
+
+// Issuer accepts or rejects (kind 8434 / 8435)
+const acceptance = nip58.createBadgeAcceptanceEvent({
+  requestEventId: requestEvent.id,
+  badgeAddress: `30009:${issuerPk}:verified`,
+  recipientPubkey: requesterPk,
+}, issuerSk)
+
+const rejection = nip58.createBadgeRejectionEvent({
+  requestEventId: requestEvent.id,
+  badgeAddress: `30009:${issuerPk}:verified`,
+  reason: 'Invalid proof',
+}, issuerSk)
+
+// Extract proof from request
+const proof = nip58.extractBadgeProof(requestEvent)
+// { type: 'payment', preimage: '...', invoice: '...' }
+
+// Check if a user has been awarded a badge
+const awarded = nip58.hasBeenAwarded(userPk, badgeAwardEvents) // boolean
+```
+
+---
+
+## Calendar Events (NIP-52)
+
+```typescript
+import { nip52 } from 'nostr-core'
+
+// Date-based calendar event (kind 31922) — holidays, all-day events
+const dateEvent = nip52.createDateBasedCalendarEvent({
+  identifier: 'team-retreat-2026',
+  title: 'Team Retreat',
+  start: '2026-06-15',
+  end: '2026-06-18',
+  content: 'Annual team retreat at the lake house',
+  locations: ['Lake Tahoe, CA'],
+  participants: [{ pubkey: teammatePk, role: 'attendee' }],
+  hashtags: ['retreat', 'team'],
+}, secretKey)
+
+// Time-based calendar event (kind 31923) — meetings, calls
+const timeEvent = nip52.createTimeBasedCalendarEvent({
+  identifier: 'standup-2026-03-17',
+  title: 'Daily Standup',
+  start: 1742212800,  // Unix timestamp
+  end: 1742214600,
+  startTzid: 'America/New_York',
+  locations: ['https://meet.example.com/standup'],
+  participants: [{ pubkey: teammatePk, relay: 'wss://relay.example.com', role: 'speaker' }],
+}, secretKey)
+
+// Calendar collection (kind 31924)
+const calendar = nip52.createCalendarEvent({
+  identifier: 'work-calendar',
+  title: 'Work Calendar',
+  eventAddresses: [
+    nip52.buildCalendarEventAddress(31922, myPk, 'team-retreat-2026'),
+    nip52.buildCalendarEventAddress(31923, myPk, 'standup-2026-03-17'),
+  ],
+}, secretKey)
+
+// RSVP to a calendar event (kind 31925)
+const rsvp = nip52.createCalendarEventRSVP({
+  identifier: 'rsvp-retreat',
+  calendarEventAddress: `31922:${organizerPk}:team-retreat-2026`,
+  status: 'accepted',
+  freebusy: 'busy',
+  calendarEventAuthor: organizerPk,
+  content: 'Looking forward to it!',
+}, secretKey)
+
+// Parse events
+const parsed = nip52.parseDateBasedCalendarEvent(event) // { identifier, title, start, end, ... }
+const timeParsed = nip52.parseTimeBasedCalendarEvent(event)
+const cal = nip52.parseCalendar(calendarEvent)
+const rsvpParsed = nip52.parseCalendarEventRSVP(rsvpEvent) // { status, freebusy, ... }
+```
+
+---
+
+## Zap Goals (NIP-75)
+
+```typescript
+import { nip75 } from 'nostr-core'
+
+// Create a fundraising goal (kind 9041)
+const goal = nip75.createZapGoalEvent({
+  content: 'Help fund our open source relay!',
+  amount: 1000000000, // 1 BTC in millisats
+  relays: ['wss://relay.damus.io'],
+  closedAt: Math.floor(Date.now() / 1000) + 86400 * 30, // 30 days
+  image: 'https://example.com/goal.png',
+  summary: 'Building a free public relay',
+  beneficiaries: [
+    { pubkey: dev1Pk, relay: 'wss://relay.damus.io', weight: '3' },
+    { pubkey: dev2Pk, relay: 'wss://relay.damus.io', weight: '1' },
+  ],
+}, secretKey)
+
+// Parse a zap goal
+const parsed = nip75.parseZapGoal(goalEvent)
+// { content, amount, relays, closedAt, beneficiaries, ... }
+
+// Check if goal is still open
+nip75.isZapGoalOpen(goalEvent) // boolean
+
+// Calculate progress from zap receipts
+const progress = nip75.calculateZapGoalProgress(zapReceipts)
+console.log(`${progress / 1000} sats raised of ${parsed.amount / 1000} target`)
+
+// Link a goal to an addressable event
+const goalTag = nip75.buildGoalTag(goalEvent.id, 'wss://relay.damus.io')
+// ['goal', '<event-id>', 'wss://relay.damus.io']
 ```
 
 ---
