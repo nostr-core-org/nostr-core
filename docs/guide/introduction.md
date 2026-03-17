@@ -25,7 +25,7 @@ Existing NWC libraries tend to be either:
 
 ## What's Included
 
-Beyond the NWC client, nostr-core exports a comprehensive set of Nostr protocol primitives covering **37 NIPs**:
+Beyond the NWC client, nostr-core exports a comprehensive set of Nostr protocol primitives covering **39 NIPs**:
 
 | Category | Modules | Description |
 |----------|---------|-------------|
@@ -41,10 +41,12 @@ Beyond the NWC client, nostr-core exports a comprehensive set of Nostr protocol 
 | **Messaging** | `nip17`, `nip28`, `nip59` | Private DMs (gift wrap), public chat channels |
 | **Discovery** | `nip50`, `nip51`, `nip65` | Search, lists, relay lists |
 | **Moderation** | `nip56` | Reporting |
-| **Badges** | `nip58` | Badge definitions, awards, profiles |
+| **Badges** | `nip58` | Badge definitions, awards, profiles, request flow with proofs |
+| **Calendar** | `nip52` | Date-based events, time-based events, calendars, RSVP |
 | **Groups** | `nip29` | Relay-based group chat |
 | **Auth** | `nip42`, `nip46`, `nip98` | Relay auth, remote signing, HTTP auth |
 | **Utility** | `nip13`, `nip40`, `nip48`, `nip57` | Proof of work, expiration, proxy tags, zaps |
+| **Fundraising** | `nip75` | Zap goals with beneficiaries and progress tracking |
 | **LNURL** | `lnurl` | Pay requests, withdraw requests, bech32 encoding, success actions (LUD-01/03/06/09/10/12/17/18/20/21) |
 | **Filtering** | `Filter` / `matchFilter` | Event filtering |
 

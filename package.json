@@ -1,6 +1,6 @@
 {
   "name": "nostr-core",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Comprehensive Nostr protocol toolkit and NWC (Nostr Wallet Connect) client",
   "type": "module",
   "main": "./dist/index.js",
@@ -69,10 +69,12 @@
     "nip-46",
     "nip-47",
     "nip-51",
+    "nip-52",
     "nip-57",
     "nip-58",
     "nip-59",
     "nip-65",
+    "nip-75",
     "nip-98"
   ]
 }

@@ -119,9 +119,11 @@ export * as nip50 from './nip50.js'
 export * as nip51 from './nip51.js'
 export * as nip56 from './nip56.js'
 export * as nip57 from './nip57.js'
+export * as nip52 from './nip52.js'
 export * as nip58 from './nip58.js'
 export * as nip59 from './nip59.js'
 export * as nip65 from './nip65.js'
+export * as nip75 from './nip75.js'
 export * as nip98 from './nip98.js'
 
 // Signer
@@ -209,13 +211,45 @@ export { createAuthEventTemplate, createAuthEvent, verifyAuthEvent } from './nip
 export { createListEventTemplate as createListTemplate, createListEvent, parseList, getEventIds, getPubkeys, getHashtags, getRelayUrls, getAddresses } from './nip51.js'
 export type { ListItem, ParsedList } from './nip51.js'
 
+// NIP-52
+export {
+  createDateBasedCalendarEventTemplate, createDateBasedCalendarEvent, parseDateBasedCalendarEvent,
+  createTimeBasedCalendarEventTemplate, createTimeBasedCalendarEvent, parseTimeBasedCalendarEvent,
+  createCalendarTemplate, createCalendarEvent, parseCalendar,
+  createCalendarEventRSVPTemplate, createCalendarEventRSVP, parseCalendarEventRSVP,
+  buildCalendarEventAddress, isCalendarEvent,
+} from './nip52.js'
+export type {
+  DateBasedCalendarEvent, TimeBasedCalendarEvent, CalendarEventParticipant,
+  Calendar, CalendarEventRSVP, RSVPStatus, FreeBusy,
+} from './nip52.js'
+
 // NIP-57
 export { createZapRequestEventTemplate, createZapRequestEvent, parseZapReceipt, validateZapReceipt, fetchZapInvoice, ZapError } from './nip57.js'
 export type { ZapRequest, ZapReceipt } from './nip57.js'
 
 // NIP-58
-export { createBadgeDefinitionTemplate, createBadgeDefinitionEvent, parseBadgeDefinition, createBadgeAwardTemplate, createBadgeAwardEvent, parseBadgeAward, createProfileBadgesTemplate, createProfileBadgesEvent, parseProfileBadges, createBadgeRequestTemplate, verifyBadgeProof, validateBadgeAward } from './nip58.js'
-export type { BadgeDefinition, BadgeAward, ProfileBadge, BadgeProof, BadgeRequest } from './nip58.js'
+export {
+  createBadgeDefinitionTemplate, createBadgeDefinitionEvent, parseBadgeDefinition,
+  createBadgeAwardTemplate, createBadgeAwardEvent, parseBadgeAward,
+  createProfileBadgesTemplate, createProfileBadgesEvent, parseProfileBadges,
+  createBadgeRequestTemplate, parseBadgeRequest, extractBadgeProof, verifyBadgeProof, validateBadgeAward,
+  createBadgeAcceptanceTemplate, createBadgeAcceptanceEvent,
+  createBadgeRejectionTemplate, createBadgeRejectionEvent,
+  buildBadgeAddress, hasBeenAwarded,
+} from './nip58.js'
+export type {
+  BadgeDefinition, BadgeAward, ProfileBadge,
+  BadgeProof, BadgeProofPow, BadgeProofPayment, BadgeProofMembership,
+  BadgeRequest, BadgeAcceptance, BadgeRejection,
+} from './nip58.js'
+
+// NIP-75
+export {
+  createZapGoalTemplate, createZapGoalEvent, parseZapGoal,
+  isZapGoalOpen, calculateZapGoalProgress, buildGoalTag,
+} from './nip75.js'
+export type { ZapGoal, ZapBeneficiary } from './nip75.js'
 
 // NIP-98
 export { createHttpAuthEventTemplate, createHttpAuthEvent, getAuthorizationHeader, verifyHttpAuthEvent } from './nip98.js'

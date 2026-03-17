@@ -1,6 +1,6 @@
 # nostr-core
 
-> Comprehensive Nostr protocol toolkit and NWC client for JavaScript/TypeScript. 37 NIPs implemented: wallet operations (NIP-47), signing (NIP-07, NIP-46), encryption (NIP-04, NIP-44), relay management (NIP-11, NIP-42, NIP-65), social features (NIP-02, NIP-09, NIP-10, NIP-18, NIP-22, NIP-25, NIP-27, NIP-28, NIP-30, NIP-31, NIP-56), content (NIP-23, NIP-24, NIP-36, NIP-40, NIP-51), identity (NIP-05, NIP-06, NIP-19, NIP-21), messaging (NIP-17, NIP-59), payments (NIP-57, NIP-98), groups (NIP-29), badges (NIP-58), search (NIP-50), proof-of-work (NIP-13), and bridging (NIP-48).
+> Comprehensive Nostr protocol toolkit and NWC client for JavaScript/TypeScript. 39 NIPs implemented: wallet operations (NIP-47), signing (NIP-07, NIP-46), encryption (NIP-04, NIP-44), relay management (NIP-11, NIP-42, NIP-65), social features (NIP-02, NIP-09, NIP-10, NIP-18, NIP-22, NIP-25, NIP-27, NIP-28, NIP-30, NIP-31, NIP-56), content (NIP-23, NIP-24, NIP-36, NIP-40, NIP-51), identity (NIP-05, NIP-06, NIP-19, NIP-21), messaging (NIP-17, NIP-59), payments (NIP-57, NIP-98), groups (NIP-29), badges (NIP-58), calendar events (NIP-52), zap goals (NIP-75), search (NIP-50), proof-of-work (NIP-13), and bridging (NIP-48).
 
 nostr-core lets agents and applications pay invoices, check balances, create invoices, and listen for payments through any NWC-compatible Lightning wallet. Beyond wallet operations, it provides a unified Signer interface, comprehensive NIP implementations for social interactions, content publishing, identity verification, group messaging, badges, zaps, and more. One connection string, zero framework dependencies, auto-encryption. Works in Node.js 18+, Deno, Bun, and Cloudflare Workers. Free and open source (MIT).
 
@@ -60,9 +60,11 @@ nostr-core lets agents and applications pay invoices, check balances, create inv
 - [NIP-51](api/nip51.md): Lists with encrypted private items (createListEvent, parseList)
 - [NIP-56](api/nip56.md): Reporting (createReportEvent, parseReport) - nudity, spam, impersonation, etc.
 - [NIP-57](api/nip57.md): Lightning zaps (createZapRequestEvent, parseZapReceipt, validateZapReceipt, fetchZapInvoice)
-- [NIP-58](api/nip58.md): Badges (createBadgeDefinitionEvent, createBadgeAwardEvent, parseBadgeDefinition)
+- [NIP-52](api/nip52.md): Calendar Events (createDateBasedCalendarEvent, createTimeBasedCalendarEvent, createCalendarEvent, createCalendarEventRSVP, parseCalendar)
+- [NIP-58](api/nip58.md): Badges (createBadgeDefinitionEvent, createBadgeAwardEvent, parseBadgeDefinition, createBadgeRequestTemplate, createBadgeAcceptanceEvent)
 - [NIP-59](api/nip59.md): Gift Wrap - multi-layer event encryption for metadata protection (createRumor, createSeal, createWrap, unwrap)
 - [NIP-65](api/nip65.md): Relay List Metadata - user relay preferences for read/write routing (parseRelayList, createRelayListEvent, getReadRelays, getWriteRelays)
+- [NIP-75](api/nip75.md): Zap Goals (createZapGoalEvent, parseZapGoal, isZapGoalOpen, calculateZapGoalProgress)
 - [NIP-98](api/nip98.md): HTTP Auth (createHttpAuthEvent, getAuthorizationHeader, verifyHttpAuthEvent)
 - LNURL Protocol: encodeLnurl(), decodeLnurl(), isLnurl(), resolveUrl(), fetchPayRequest(), requestInvoice(), fetchWithdrawRequest(), submitWithdrawRequest(), parseLnurlMetadata(), parseSuccessAction(), decryptAesSuccessAction(), verifyPayment() — LUD-01/03/06/09/10/12/17/18/20/21
 - [Utils](api/utils.md): normalizeURL, bytesToHex, hexToBytes, randomBytes
