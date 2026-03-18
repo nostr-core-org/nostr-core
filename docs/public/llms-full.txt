@@ -2567,7 +2567,7 @@ async function fetchZapInvoice(opts: { lnurl, zapRequest: NostrEvent, amount }):
 
 # API Reference: NIP-58
 
-Badges - kind 30009 definitions, kind 8 awards, kind 30008 profile badges.
+Badges - kind 30009 definitions, kind 8 awards, kind 30008 profile badges, kind 30058 requests, kind 30059 denials.
 
 ## Import
 
@@ -2605,22 +2605,46 @@ function parseProfileBadges(event: NostrEvent): ProfileBadge[]
 
 `ProfileBadge = { badgeAddress, awardEventId }`
 
-## Extended Proofs & Request Flow
+## Badge Request (kind 30058) & Denial (kind 30059) — Draft Extension
+
+> Kinds 30058/30059 are a draft extension (https://github.com/nostr-protocol/nips/pull/2204), working in BadgeBox (https://badgebox.rinbal.de). Wider adoption needed for official NIP-58 merge.
+
+## Badge Request (kind 30058)
+
+Addressable event — user requests a badge from an issuer. `d` tag = badge address (one active request per badge per user). Supports optional `proof` tags (URL, text, or event id). Withdrawal via NIP-09 deletion.
 
 ```ts
-function createBadgeRequestTemplate(request: BadgeRequest): EventTemplate  // kind 8433
+function createBadgeRequestTemplate(request: BadgeRequest): EventTemplate
+function createBadgeRequestEvent(request: BadgeRequest, secretKey: Uint8Array): NostrEvent
 function parseBadgeRequest(event: NostrEvent): BadgeRequest
-function extractBadgeProof(event: NostrEvent): BadgeProof | undefined
+```
+
+`BadgeRequest = { badgeAddress, issuerPubkey, proofs?: string[], content?, relayUrl? }`
+
+## Badge Denial (kind 30059)
+
+Addressable event — issuer formally denies a request. `d` tag = request event id (one denial per request). Denials are soft — user can re-request. Revocation via NIP-09 deletion.
+
+```ts
+function createBadgeDenialTemplate(denial: BadgeDenial): EventTemplate
+function createBadgeDenialEvent(denial: BadgeDenial, secretKey: Uint8Array): NostrEvent
+function parseBadgeDenial(event: NostrEvent): BadgeDenial
+```
+
+`BadgeDenial = { requestEventId, badgeAddress, requesterPubkey, reason?, relayUrl? }`
+
+## State Resolution & Utilities
+
+States (priority order): Fulfilled (award exists) > Denied (denial exists) > Pending.
+
+```ts
+function resolveBadgeRequestState(request: NostrEvent, awards: NostrEvent[], denials: NostrEvent[]): BadgeRequestState
 function validateBadgeAward(award: NostrEvent, definition: NostrEvent): boolean
-function createBadgeAcceptanceTemplate(acceptance: BadgeAcceptance): EventTemplate  // kind 8434
-function createBadgeAcceptanceEvent(acceptance: BadgeAcceptance, secretKey: Uint8Array): NostrEvent
-function createBadgeRejectionTemplate(rejection: BadgeRejection): EventTemplate  // kind 8435
-function createBadgeRejectionEvent(rejection: BadgeRejection, secretKey: Uint8Array): NostrEvent
 function buildBadgeAddress(definition: NostrEvent): string
 function hasBeenAwarded(pubkey: string, badgeAwards: NostrEvent[]): boolean
 ```
 
-`BadgeProof = { type: 'pow', difficulty, nonce } | { type: 'payment', preimage, invoice } | { type: 'membership', groupId, membershipEventId }`
+`BadgeRequestState = 'fulfilled' | 'denied' | 'pending'`
 
 ---
 
