@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="630">
+      <stop offset="0%" stop-color="#0d1117"/>
+      <stop offset="100%" stop-color="#161b22"/>
+    </linearGradient>
+  </defs>
+  <style>
+    text { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; }
+  </style>
+
+  <rect width="1200" height="630" rx="10" fill="url(#bg)" stroke="#30363d" stroke-width="1"/>
+  <rect width="1200" height="38" rx="10" fill="#161b22"/>
+  <rect y="28" width="1200" height="10" fill="#161b22"/>
+  <circle cx="20" cy="19" r="6" fill="#ff5f56"/>
+  <circle cx="40" cy="19" r="6" fill="#ffbd2e"/>
+  <circle cx="60" cy="19" r="6" fill="#27c93f"/>
+
+  <!-- Title -->
+  <text x="60" y="110" font-size="14" fill="#f97316" font-weight="bold">01</text>
+  <text x="60" y="170" font-size="38" fill="#c9d1d9" font-weight="bold">What nostr-core</text>
+  <text x="60" y="220" font-size="38" fill="#c9d1d9" font-weight="bold">Actually Is</text>
+  <text x="60" y="280" font-size="16" fill="#8b949e">Dead-simple &amp; vendor-neutral</text>
+  <text x="60" y="305" font-size="16" fill="#8b949e">Nostr toolkit for builders</text>
+
+  <!-- Tags -->
+  <rect x="60" y="340" width="90" height="28" rx="4" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+  <text x="105" y="359" text-anchor="middle" font-size="12" fill="#f97316">48 NIPs</text>
+  <rect x="162" y="340" width="110" height="28" rx="4" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+  <text x="217" y="359" text-anchor="middle" font-size="12" fill="#58a6ff">TypeScript</text>
+  <rect x="284" y="340" width="80" height="28" rx="4" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+  <text x="324" y="359" text-anchor="middle" font-size="12" fill="#27c93f">ESM</text>
+
+  <!-- Right side: simple import + what you get -->
+  <rect x="620" y="100" width="520" height="440" rx="8" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+
+  <text x="660" y="145" font-size="13" fill="#484f58">$ npm install nostr-core</text>
+
+  <line x1="660" y1="165" x2="1100" y2="165" stroke="#21262d" stroke-width="1"/>
+
+  <text x="660" y="200" font-size="14" fill="#ff5f56">import</text>
+  <text x="720" y="200" font-size="14" fill="#c9d1d9">{</text>
+  <text x="680" y="230" font-size="14" fill="#f97316">  NWC,</text>
+  <text x="680" y="260" font-size="14" fill="#58a6ff">  Relay, RelayPool,</text>
+  <text x="680" y="290" font-size="14" fill="#27c93f">  finalizeEvent, verifyEvent,</text>
+  <text x="680" y="320" font-size="14" fill="#ffbd2e">  nip04, nip44, nip59,</text>
+  <text x="680" y="350" font-size="14" fill="#c9d1d9">  nip19, nip57, nip51,</text>
+  <text x="680" y="380" font-size="14" fill="#8b949e">  generateSecretKey, getPublicKey</text>
+  <text x="660" y="410" font-size="14" fill="#c9d1d9">}</text>
+  <text x="680" y="410" font-size="14" fill="#ff5f56">from</text>
+  <text x="725" y="410" font-size="14" fill="#27c93f">'nostr-core'</text>
+
+  <line x1="660" y1="430" x2="1100" y2="430" stroke="#21262d" stroke-width="1"/>
+
+  <text x="660" y="460" font-size="12" fill="#484f58">// one package. the whole protocol.</text>
+  <text x="660" y="485" font-size="12" fill="#484f58">// payments, encryption, social, identity</text>
+  <text x="660" y="510" font-size="12" fill="#484f58">// no vendor lock-in. no framework deps.</text>
+
+  <!-- Watermark -->
+  <text x="1160" y="595" text-anchor="end" font-size="11" fill="#30363d">nostr-core</text>
+
+  <rect y="626" width="1200" height="4" rx="0" fill="#f97316"/>
+</svg>

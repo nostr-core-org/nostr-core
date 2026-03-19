@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="630">
+      <stop offset="0%" stop-color="#0d1117"/>
+      <stop offset="100%" stop-color="#161b22"/>
+    </linearGradient>
+  </defs>
+  <style>
+    text { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; }
+  </style>
+
+  <rect width="1200" height="630" rx="10" fill="url(#bg)" stroke="#30363d" stroke-width="1"/>
+  <rect width="1200" height="38" rx="10" fill="#161b22"/>
+  <rect y="28" width="1200" height="10" fill="#161b22"/>
+  <circle cx="20" cy="19" r="6" fill="#ff5f56"/>
+  <circle cx="40" cy="19" r="6" fill="#ffbd2e"/>
+  <circle cx="60" cy="19" r="6" fill="#27c93f"/>
+
+  <!-- Title -->
+  <text x="60" y="110" font-size="14" fill="#f97316" font-weight="bold">07</text>
+  <text x="60" y="160" font-size="36" fill="#c9d1d9" font-weight="bold">Lightning Without</text>
+  <text x="60" y="205" font-size="36" fill="#c9d1d9" font-weight="bold">the Lightning</text>
+  <text x="60" y="250" font-size="36" fill="#c9d1d9" font-weight="bold">Code</text>
+  <text x="60" y="305" font-size="16" fill="#8b949e">A connection string and five methods</text>
+  <text x="60" y="330" font-size="16" fill="#8b949e">cover most use cases</text>
+
+  <!-- Right side: payment flow -->
+  <rect x="580" y="80" width="560" height="490" rx="8" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+  <text x="860" y="115" text-anchor="middle" font-size="13" fill="#484f58">payment flow</text>
+
+  <!-- Connection string -->
+  <rect x="620" y="130" width="490" height="40" rx="6" fill="#0d1117" stroke="#30363d" stroke-width="1"/>
+  <text x="630" y="155" font-size="11" fill="#27c93f">nostr+walletconnect://pubkey?relay=wss://...&amp;secret=hex</text>
+
+  <!-- Arrow -->
+  <line x1="860" y1="170" x2="860" y2="195" stroke="#484f58" stroke-width="1"/>
+  <text x="870" y="188" font-size="10" fill="#484f58">connect</text>
+
+  <!-- Five methods -->
+  <rect x="620" y="200" width="490" height="250" rx="8" fill="#0d1117" stroke="#f97316" stroke-width="1"/>
+  <text x="640" y="225" font-size="12" fill="#f97316" font-weight="bold">NWC</text>
+
+  <!-- Method 1 -->
+  <rect x="640" y="240" width="200" height="30" rx="4" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+  <text x="650" y="260" font-size="12" fill="#58a6ff">getBalance()</text>
+  <text x="860" y="260" font-size="11" fill="#484f58">how much</text>
+
+  <!-- Method 2 -->
+  <rect x="640" y="280" width="200" height="30" rx="4" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+  <text x="650" y="300" font-size="12" fill="#ff5f56">payInvoice()</text>
+  <text x="860" y="300" font-size="11" fill="#484f58">send sats</text>
+
+  <!-- Method 3 -->
+  <rect x="640" y="320" width="200" height="30" rx="4" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+  <text x="650" y="340" font-size="12" fill="#27c93f">makeInvoice()</text>
+  <text x="860" y="340" font-size="11" fill="#484f58">receive sats</text>
+
+  <!-- Method 4 -->
+  <rect x="640" y="360" width="200" height="30" rx="4" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+  <text x="650" y="380" font-size="12" fill="#ffbd2e">payLightningAddress()</text>
+  <text x="860" y="380" font-size="11" fill="#484f58">pay anyone</text>
+
+  <!-- Method 5 -->
+  <rect x="640" y="400" width="200" height="30" rx="4" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+  <text x="650" y="420" font-size="12" fill="#c9d1d9">on('payment_received')</text>
+  <text x="860" y="420" font-size="11" fill="#484f58">get notified</text>
+
+  <!-- Flow to network -->
+  <line x1="860" y1="450" x2="860" y2="475" stroke="#484f58" stroke-width="1"/>
+
+  <rect x="700" y="480" width="320" height="40" rx="6" fill="#0d1117" stroke="#ffbd2e" stroke-width="1"/>
+  <text x="860" y="505" text-anchor="middle" font-size="13" fill="#ffbd2e">Lightning Network</text>
+
+  <!-- Stats -->
+  <text x="620" y="545" font-size="11" fill="#484f58">Auto NIP-04/NIP-44 encryption</text>
+  <text x="860" y="545" font-size="11" fill="#484f58">Built-in fiat conversion</text>
+
+  <!-- Watermark -->
+  <text x="1160" y="600" text-anchor="end" font-size="11" fill="#30363d">nostr-core</text>
+
+  <rect y="626" width="1200" height="4" rx="0" fill="#f97316"/>
+</svg>

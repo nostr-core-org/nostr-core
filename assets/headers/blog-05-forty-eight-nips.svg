@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="630">
+      <stop offset="0%" stop-color="#0d1117"/>
+      <stop offset="100%" stop-color="#161b22"/>
+    </linearGradient>
+  </defs>
+  <style>
+    text { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; }
+  </style>
+
+  <rect width="1200" height="630" rx="10" fill="url(#bg)" stroke="#30363d" stroke-width="1"/>
+  <rect width="1200" height="38" rx="10" fill="#161b22"/>
+  <rect y="28" width="1200" height="10" fill="#161b22"/>
+  <circle cx="20" cy="19" r="6" fill="#ff5f56"/>
+  <circle cx="40" cy="19" r="6" fill="#ffbd2e"/>
+  <circle cx="60" cy="19" r="6" fill="#27c93f"/>
+
+  <!-- Title -->
+  <text x="60" y="110" font-size="14" fill="#f97316" font-weight="bold">05</text>
+  <text x="60" y="170" font-size="38" fill="#c9d1d9" font-weight="bold">Forty-Eight NIPs,</text>
+  <text x="60" y="220" font-size="38" fill="#c9d1d9" font-weight="bold">One Import</text>
+  <text x="60" y="280" font-size="16" fill="#8b949e">Most libraries give you the basics.</text>
+  <text x="60" y="305" font-size="16" fill="#8b949e">nostr-core gives you the protocol.</text>
+
+  <!-- Right side: category bars showing breadth -->
+  <rect x="620" y="100" width="520" height="440" rx="8" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+
+  <!-- Big number -->
+  <text x="880" y="170" text-anchor="middle" font-size="72" fill="#f97316" font-weight="bold">48</text>
+  <text x="880" y="200" text-anchor="middle" font-size="16" fill="#484f58">NIPs implemented</text>
+
+  <line x1="660" y1="220" x2="1100" y2="220" stroke="#21262d" stroke-width="1"/>
+
+  <!-- Category bars - width proportional to NIP count (30px per NIP) -->
+  <text x="660" y="260" font-size="13" fill="#f97316" font-weight="bold">Core</text>
+  <rect x="760" y="245" width="210" height="20" rx="3" fill="#f97316" opacity="0.2"/>
+  <rect x="760" y="245" width="210" height="20" rx="3" fill="none" stroke="#f97316" stroke-width="1"/>
+  <text x="770" y="260" font-size="10" fill="#f97316">01 02 09 10 11 13 42</text>
+
+  <text x="660" y="300" font-size="13" fill="#58a6ff" font-weight="bold">Identity</text>
+  <rect x="760" y="285" width="150" height="20" rx="3" fill="#58a6ff" opacity="0.2"/>
+  <rect x="760" y="285" width="150" height="20" rx="3" fill="none" stroke="#58a6ff" stroke-width="1"/>
+  <text x="770" y="300" font-size="10" fill="#58a6ff">05 06 07 19 46</text>
+
+  <text x="660" y="340" font-size="13" fill="#27c93f" font-weight="bold">Encryption</text>
+  <rect x="760" y="325" width="120" height="20" rx="3" fill="#27c93f" opacity="0.2"/>
+  <rect x="760" y="325" width="120" height="20" rx="3" fill="none" stroke="#27c93f" stroke-width="1"/>
+  <text x="770" y="340" font-size="10" fill="#27c93f">04 17 44 59</text>
+
+  <text x="660" y="380" font-size="13" fill="#ffbd2e" font-weight="bold">Social</text>
+  <rect x="760" y="365" width="270" height="20" rx="3" fill="#ffbd2e" opacity="0.2"/>
+  <rect x="760" y="365" width="270" height="20" rx="3" fill="none" stroke="#ffbd2e" stroke-width="1"/>
+  <text x="770" y="380" font-size="10" fill="#ffbd2e">18 22 23 25 27 28 29 30 31</text>
+
+  <text x="660" y="420" font-size="13" fill="#ff5f56" font-weight="bold">Payments</text>
+  <rect x="760" y="405" width="90" height="20" rx="3" fill="#ff5f56" opacity="0.2"/>
+  <rect x="760" y="405" width="90" height="20" rx="3" fill="none" stroke="#ff5f56" stroke-width="1"/>
+  <text x="770" y="420" font-size="10" fill="#ff5f56">47 57 75</text>
+
+  <text x="660" y="460" font-size="13" fill="#c9d1d9" font-weight="bold">Community</text>
+  <rect x="760" y="445" width="300" height="20" rx="3" fill="#c9d1d9" opacity="0.1"/>
+  <rect x="760" y="445" width="300" height="20" rx="3" fill="none" stroke="#30363d" stroke-width="1"/>
+  <text x="770" y="460" font-size="10" fill="#8b949e">24 36 40 48 50 51 52 56 58 65</text>
+
+  <text x="660" y="500" font-size="13" fill="#8b949e" font-weight="bold">Infra</text>
+  <rect x="760" y="485" width="60" height="20" rx="3" fill="#8b949e" opacity="0.1"/>
+  <rect x="760" y="485" width="60" height="20" rx="3" fill="none" stroke="#30363d" stroke-width="1"/>
+  <text x="770" y="500" font-size="10" fill="#8b949e">21 98</text>
+
+  <!-- Watermark -->
+  <text x="1160" y="595" text-anchor="end" font-size="11" fill="#30363d">nostr-core</text>
+
+  <rect y="626" width="1200" height="4" rx="0" fill="#f97316"/>
+</svg>
