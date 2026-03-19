@@ -233,15 +233,13 @@ export {
   createBadgeDefinitionTemplate, createBadgeDefinitionEvent, parseBadgeDefinition,
   createBadgeAwardTemplate, createBadgeAwardEvent, parseBadgeAward,
   createProfileBadgesTemplate, createProfileBadgesEvent, parseProfileBadges,
-  createBadgeRequestTemplate, parseBadgeRequest, extractBadgeProof, verifyBadgeProof, validateBadgeAward,
-  createBadgeAcceptanceTemplate, createBadgeAcceptanceEvent,
-  createBadgeRejectionTemplate, createBadgeRejectionEvent,
-  buildBadgeAddress, hasBeenAwarded,
+  createBadgeRequestTemplate, createBadgeRequestEvent, parseBadgeRequest,
+  createBadgeDenialTemplate, createBadgeDenialEvent, parseBadgeDenial,
+  resolveBadgeRequestState, validateBadgeAward, buildBadgeAddress, hasBeenAwarded,
 } from './nip58.js'
 export type {
   BadgeDefinition, BadgeAward, ProfileBadge,
-  BadgeProof, BadgeProofPow, BadgeProofPayment, BadgeProofMembership,
-  BadgeRequest, BadgeAcceptance, BadgeRejection,
+  BadgeRequest, BadgeDenial, BadgeRequestState,
 } from './nip58.js'
 
 // NIP-75
