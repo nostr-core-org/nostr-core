@@ -6,7 +6,7 @@ import type { Filter } from './filter.js'
 import * as nip04 from './nip04.js'
 import * as nip44 from './nip44.js'
 import { decode as nip19decode } from './nip19.js'
-import { Relay } from './relay.js'
+import { RelayPool } from './pool.js'
 import type {
   EncryptionType,
   GetInfoResponse,
@@ -51,10 +51,10 @@ type EventHandler = (notification: Nip47Notification) => void
 
 export class NWC {
   private walletPubkey: string
-  private relayUrl: string
+  private relayUrls: string[]
   private secretKey: Uint8Array
   private publicKey: string
-  private relay: Relay
+  private pool: RelayPool
   private encryptionType: EncryptionType | undefined
   private conversationKey: Uint8Array | undefined
   private _connected = false
@@ -65,13 +65,18 @@ export class NWC {
   public replyTimeout = 60000
   public publishTimeout = 5000
 
+  /** Primary relay URL (first relay in the connection string) */
+  get relayUrl(): string {
+    return this.relayUrls[0]
+  }
+
   constructor(connectionString: string) {
     const opts = NWC.parseConnectionString(connectionString)
     this.walletPubkey = opts.walletPubkey
-    this.relayUrl = opts.relayUrl
+    this.relayUrls = opts.relayUrls
     this.secretKey = hexToBytes(opts.secret)
     this.publicKey = getPublicKey(this.secretKey)
-    this.relay = new Relay(this.relayUrl)
+    this.pool = new RelayPool()
   }
 
   static parseConnectionString(connectionString: string): NWCConnectionOptions {
@@ -84,10 +89,10 @@ export class NWC {
 
     const url = new URL(normalized)
     const walletPubkey = url.host || url.pathname.replace('//', '')
-    const relayUrl = url.searchParams.get('relay')
+    const relayUrls = url.searchParams.getAll('relay')
     let secret = url.searchParams.get('secret')
 
-    if (!walletPubkey || !relayUrl || !secret) {
+    if (!walletPubkey || relayUrls.length === 0 || !secret) {
       throw new NWCError('Invalid NWC connection string: missing pubkey, relay, or secret', 'INVALID_CONNECTION_STRING')
     }
 
@@ -98,7 +103,12 @@ export class NWC {
       secret = bytesToHex(decoded.data as Uint8Array)
     }
 
-    return { walletPubkey, relayUrl: relayUrl as string, secret: secret as string }
+    return {
+      walletPubkey,
+      relayUrl: relayUrls[0],
+      relayUrls,
+      secret: secret as string,
+    }
   }
 
   get connected(): boolean {
@@ -106,10 +116,17 @@ export class NWC {
   }
 
   async connect(): Promise<void> {
-    try {
-      await this.relay.connect({ timeout: 5000 })
-    } catch (err) {
-      throw new NWCConnectionError(`Failed to connect to relay ${this.relayUrl}: ${(err as Error).message}`)
+    // Connect to all relays in parallel; succeed if at least one connects
+    const results = await Promise.allSettled(
+      this.relayUrls.map(url => this.pool.ensureRelay(url, { connectionTimeout: 5000 })),
+    )
+
+    const anyConnected = results.some(r => r.status === 'fulfilled')
+    if (!anyConnected) {
+      const firstError = results.find(r => r.status === 'rejected') as PromiseRejectedResult | undefined
+      throw new NWCConnectionError(
+        `Failed to connect to relays [${this.relayUrls.join(', ')}]: ${firstError?.reason?.message || 'unknown error'}`,
+      )
     }
     this._connected = true
 
@@ -219,14 +236,13 @@ export class NWC {
     const startSub = () => {
       if (!subscribed) return
 
-      currentSub = this.relay.subscribe(
-        [
-          {
-            kinds: [notificationKind],
-            authors: [this.walletPubkey],
-            '#p': [this.publicKey],
-          } as Filter,
-        ],
+      currentSub = this.pool.subscribe(
+        this.relayUrls,
+        {
+          kinds: [notificationKind],
+          authors: [this.walletPubkey],
+          '#p': [this.publicKey],
+        } as Filter,
         {
           onevent: async (event: NostrEvent) => {
             try {
@@ -267,7 +283,7 @@ export class NWC {
   close(): void {
     this.notificationSub?.close()
     this.notificationSub = undefined
-    this.relay.close()
+    this.pool.close()
     this._connected = false
     this.eventHandlers.clear()
   }
@@ -278,9 +294,10 @@ export class NWC {
     if (this.encryptionType) return
 
     // Query the wallet service info event (kind 13194)
-    const events = await this._queryEvents(
-      [{ kinds: [NWC_INFO_KIND], authors: [this.walletPubkey], limit: 1 }],
-      10000,
+    const events = await this.pool.querySync(
+      this.relayUrls,
+      { kinds: [NWC_INFO_KIND], authors: [this.walletPubkey], limit: 1 } as Filter,
+      { maxWait: 10000 },
     )
 
     if (!events.length) {
@@ -368,16 +385,18 @@ export class NWC {
           reject(new NWCReplyTimeoutError(`Reply timeout for ${method}: event ${event.id}`))
         }, replyTimeoutMs)
 
-        const sub = this.relay.subscribe(
-          [
-            {
-              kinds: [NWC_RESPONSE_KIND],
-              authors: [this.walletPubkey],
-              '#e': [event.id],
-            } as Filter,
-          ],
+        let responded = false
+        const sub = this.pool.subscribe(
+          this.relayUrls,
+          {
+            kinds: [NWC_RESPONSE_KIND],
+            authors: [this.walletPubkey],
+            '#e': [event.id],
+          } as Filter,
           {
             onevent: async (responseEvent: NostrEvent) => {
+              if (responded) return // Deduplicate across relays
+              responded = true
               clearTimeout(replyTimer)
               sub.close()
 
@@ -408,7 +427,7 @@ export class NWC {
           },
         )
 
-        // Publish the request
+        // Publish the request to all relays
         const publishTimer = setTimeout(() => {
           sub.close()
           clearTimeout(replyTimer)
@@ -416,8 +435,13 @@ export class NWC {
         }, this.publishTimeout)
 
         try {
-          await this.relay.publish(event)
+          const published = await this.pool.publish(this.relayUrls, event)
           clearTimeout(publishTimer)
+          if (published.length === 0) {
+            clearTimeout(replyTimer)
+            sub.close()
+            reject(new NWCPublishError(`Failed to publish ${method}: no relay accepted the event`))
+          }
         } catch (err) {
           clearTimeout(publishTimer)
           clearTimeout(replyTimer)
@@ -440,14 +464,13 @@ export class NWC {
     const notificationKind =
       this.encryptionType === 'nip04' ? NWC_NOTIFICATION_NIP04_KIND : NWC_NOTIFICATION_NIP44_KIND
 
-    this.notificationSub = this.relay.subscribe(
-      [
-        {
-          kinds: [notificationKind],
-          authors: [this.walletPubkey],
-          '#p': [this.publicKey],
-        } as Filter,
-      ],
+    this.notificationSub = this.pool.subscribe(
+      this.relayUrls,
+      {
+        kinds: [notificationKind],
+        authors: [this.walletPubkey],
+        '#p': [this.publicKey],
+      } as Filter,
       {
         onevent: async (event: NostrEvent) => {
           try {
@@ -473,32 +496,4 @@ export class NWC {
     )
   }
 
-  private async _queryEvents(filters: Filter[], timeoutMs: number): Promise<NostrEvent[]> {
-    return new Promise<NostrEvent[]>((resolve) => {
-      const events: NostrEvent[] = []
-      let resolved = false
-
-      const timer = setTimeout(() => {
-        if (!resolved) {
-          resolved = true
-          sub.close()
-          resolve(events)
-        }
-      }, timeoutMs)
-
-      const sub = this.relay.subscribe(filters, {
-        onevent: (event: NostrEvent) => {
-          events.push(event)
-        },
-        oneose: () => {
-          if (!resolved) {
-            resolved = true
-            clearTimeout(timer)
-            sub.close()
-            resolve(events)
-          }
-        },
-      })
-    })
-  }
 }

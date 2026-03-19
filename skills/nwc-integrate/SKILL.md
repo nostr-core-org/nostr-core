@@ -27,6 +27,10 @@ The user must provide an NWC connection string from their wallet. Ask them:
 
 **Format:** `nostr+walletconnect://<walletPubkey>?relay=<relayUrl>&secret=<hexOrNsec>`
 
+Multiple relays are supported — all are parsed and used for redundancy:
+
+`nostr+walletconnect://<pubkey>?relay=wss://r1.com&relay=wss://r2.com&secret=<hex>`
+
 **SECURITY RULES:**
 - NEVER log, echo, commit, or display the connection string - it contains a private key
 - Store it as an environment variable: `NWC_CONNECTION_STRING`

@@ -122,6 +122,7 @@ export * as nip57 from './nip57.js'
 export * as nip52 from './nip52.js'
 export * as nip58 from './nip58.js'
 export * as nip59 from './nip59.js'
+export * as nip60 from './nip60.js'
 export * as nip65 from './nip65.js'
 export * as nip75 from './nip75.js'
 export * as nip98 from './nip98.js'
@@ -244,6 +245,20 @@ export type {
   BadgeRequest, BadgeAcceptance, BadgeRejection,
 } from './nip58.js'
 
+// NIP-60
+export {
+  createWalletEventTemplate, createWalletEvent, parseWalletEvent,
+  createTokenEventTemplate, createTokenEvent, parseTokenEvent,
+  createHistoryEventTemplate, createHistoryEvent, parseHistoryEvent,
+  createQuoteEventTemplate, createQuoteEvent, parseQuoteEvent,
+  createTokenDeleteTemplate, createTokenDeleteEvent,
+  getWalletFilters, getHistoryFilter, getProofsBalance,
+  WALLET_KIND, TOKEN_KIND, HISTORY_KIND, QUOTE_KIND,
+} from './nip60.js'
+export type {
+  CashuProof, CashuToken, CashuWallet, CashuHistory, CashuHistoryRef, CashuQuote,
+} from './nip60.js'
+
 // NIP-75
 export {
   createZapGoalTemplate, createZapGoalEvent, parseZapGoal,
@@ -293,6 +308,22 @@ export { Relay, Subscription } from './relay.js'
 export type { SubscriptionParams } from './relay.js'
 export { RelayPool } from './pool.js'
 export type { SubCloser, PoolSubscribeParams } from './pool.js'
+
+// Blossom Media (NIP-B7 / BUD)
+export * as blossom from './blossom.js'
+export {
+  createServerListEventTemplate, createServerListEvent, parseServerList,
+  createAuthEventTemplate as createBlossomAuthTemplate, createAuthEvent as createBlossomAuthEvent,
+  getAuthorizationHeader as getBlossomAuthHeader,
+  uploadBlob, getBlob, checkBlob, deleteBlob, listBlobs, mirrorBlob, getBlobHash,
+  BlossomError, SERVER_LIST_KIND, AUTH_KIND,
+} from './blossom.js'
+export type { BlobDescriptor, BlossomAuthAction } from './blossom.js'
+
+// BOLT-11 Invoice Decoding
+export * as bolt11 from './bolt11.js'
+export { decode as decodeBolt11, Bolt11Error } from './bolt11.js'
+export type { Bolt11Invoice, Bolt11Network, Bolt11RouteHint, Bolt11FallbackAddress } from './bolt11.js'
 
 // Utils
 export { normalizeURL, utf8Encoder, utf8Decoder, bytesToHex, hexToBytes, randomBytes } from './utils.js'

@@ -22,7 +22,8 @@ import type {
 ```ts
 type NWCConnectionOptions = {
   walletPubkey: string
-  relayUrl: string
+  relayUrl: string      // Primary relay (first in connection string)
+  relayUrls: string[]   // All relays from the connection string
   secret: string
 }
 ```

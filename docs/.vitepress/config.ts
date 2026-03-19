@@ -117,6 +117,7 @@ export default defineConfig({
               { text: 'NIP-57', link: '/api/nip57' },
               { text: 'NIP-58', link: '/api/nip58' },
               { text: 'NIP-59', link: '/api/nip59' },
+              { text: 'NIP-60', link: '/api/nip60' },
               { text: 'NIP-65', link: '/api/nip65' },
               { text: 'NIP-75', link: '/api/nip75' },
               { text: 'NIP-98', link: '/api/nip98' },
@@ -127,6 +128,8 @@ export default defineConfig({
             collapsed: true,
             items: [
               { text: 'LNURL Protocol', link: '/api/lnurl' },
+              { text: 'BOLT-11 Decoder', link: '/api/bolt11' },
+              { text: 'Blossom Media', link: '/api/blossom' },
             ],
           },
           {

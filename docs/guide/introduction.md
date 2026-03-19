@@ -25,7 +25,7 @@ Existing NWC libraries tend to be either:
 
 ## What's Included
 
-Beyond the NWC client, nostr-core exports a comprehensive set of Nostr protocol primitives covering **39 NIPs**:
+Beyond the NWC client, nostr-core exports a comprehensive set of Nostr protocol primitives covering **40+ NIPs**:
 
 | Category | Modules | Description |
 |----------|---------|-------------|
@@ -47,7 +47,10 @@ Beyond the NWC client, nostr-core exports a comprehensive set of Nostr protocol 
 | **Auth** | `nip42`, `nip46`, `nip98` | Relay auth, remote signing, HTTP auth |
 | **Utility** | `nip13`, `nip40`, `nip48`, `nip57` | Proof of work, expiration, proxy tags, zaps |
 | **Fundraising** | `nip75` | Zap goals with beneficiaries and progress tracking |
+| **eCash** | `nip60` | Cashu wallet storage on Nostr - wallet metadata, token proofs, spending history, quote tracking |
 | **LNURL** | `lnurl` | Pay requests, withdraw requests, bech32 encoding, success actions (LUD-01/03/06/09/10/12/17/18/20/21) |
+| **BOLT-11** | `bolt11` | Lightning invoice decoding - amount, payment hash, description, expiry, route hints, payee node key |
+| **Media** | `blossom` | Blossom media storage (NIP-B7) - upload, download, delete, list, mirror blobs on content-addressable servers |
 | **Filtering** | `Filter` / `matchFilter` | Event filtering |
 
 These are the same primitives used internally by the NWC client, exposed so you can build complete Nostr applications without pulling in another library.

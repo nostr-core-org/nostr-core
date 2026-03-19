@@ -30,6 +30,14 @@ The connection string format is:
 nostr+walletconnect://<walletPubkey>?relay=<relayUrl>&secret=<hexOrNsec>
 ```
 
+Multiple relays are supported:
+
+```
+nostr+walletconnect://<pubkey>?relay=wss://relay1.com&relay=wss://relay2.com&secret=<hex>
+```
+
+When multiple relays are provided, the NWC client connects to all of them in parallel and publishes requests to all relays for redundancy. Connection succeeds if at least one relay connects.
+
 ## Static Methods
 
 ### parseConnectionString
@@ -38,12 +46,16 @@ nostr+walletconnect://<walletPubkey>?relay=<relayUrl>&secret=<hexOrNsec>
 NWC.parseConnectionString(connectionString: string): NWCConnectionOptions
 ```
 
-Parses a connection string without creating a client.
+Parses a connection string without creating a client. Extracts all `relay` params.
 
 **Returns:** [`NWCConnectionOptions`](/api/types#nwcconnectionoptions)
 
 ```ts
-const { walletPubkey, relayUrl, secret } = NWC.parseConnectionString('nostr+walletconnect://...')
+const { walletPubkey, relayUrl, relayUrls, secret } = NWC.parseConnectionString(
+  'nostr+walletconnect://pubkey?relay=wss://r1.com&relay=wss://r2.com&secret=abc'
+)
+// relayUrl   → 'wss://r1.com'        (first relay, for backward compat)
+// relayUrls  → ['wss://r1.com', 'wss://r2.com']  (all relays)
 ```
 
 ## Properties

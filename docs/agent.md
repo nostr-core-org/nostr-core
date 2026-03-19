@@ -76,6 +76,36 @@ All three implement the same `Signer` interface (`getPublicKey()`, `signEvent()`
 
 See the API docs for [Signer](/api/signer), [NIP-07](/api/nip07), and [NIP-46](/api/nip46).
 
+## eCash Wallets (NIP-60)
+
+nostr-core supports Cashu eCash wallets stored on Nostr:
+
+| Module | Description |
+|--------|-------------|
+| `nip60` | Cashu wallet management - wallet metadata, token proof storage, spending history, quote tracking |
+
+All wallet data is NIP-44 encrypted to self. See the API docs for [NIP-60](/api/nip60).
+
+## BOLT-11 Invoice Decoding
+
+Decode Lightning invoices to extract amount, payment hash, description, expiry, route hints, and payee node key:
+
+| Module | Description |
+|--------|-------------|
+| `bolt11` | BOLT-11 decoder - supports mainnet/testnet/signet/regtest, uppercase QR codes, lightning: URIs |
+
+See the API docs for [BOLT-11](/api/bolt11).
+
+## Blossom Media (NIP-B7)
+
+Upload, download, and manage media on content-addressable Blossom servers:
+
+| Module | Description |
+|--------|-------------|
+| `blossom` | Full Blossom client - server lists (BUD-03), auth tokens (BUD-11), upload/download/delete/list/mirror |
+
+See the API docs for [Blossom](/api/blossom).
+
 ## Private Messaging (NIP-59 & NIP-17)
 
 nostr-core supports multi-layer encrypted messaging:
