@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="630">
+      <stop offset="0%" stop-color="#0d1117"/>
+      <stop offset="100%" stop-color="#161b22"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1200" y2="0">
+      <stop offset="0%" stop-color="#f97316"/>
+      <stop offset="100%" stop-color="#27c93f"/>
+    </linearGradient>
+  </defs>
+  <style>
+    text { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; }
+  </style>
+
+  <rect width="1200" height="630" rx="10" fill="url(#bg)" stroke="#30363d" stroke-width="1"/>
+  <rect width="1200" height="38" rx="10" fill="#161b22"/>
+  <rect y="28" width="1200" height="10" fill="#161b22"/>
+  <circle cx="20" cy="19" r="6" fill="#ff5f56"/>
+  <circle cx="40" cy="19" r="6" fill="#ffbd2e"/>
+  <circle cx="60" cy="19" r="6" fill="#27c93f"/>
+
+  <!-- Title -->
+  <text x="60" y="110" font-size="14" fill="#f97316" font-weight="bold">09</text>
+  <text x="60" y="170" font-size="38" fill="#c9d1d9" font-weight="bold">Two Wallets,</text>
+  <text x="60" y="220" font-size="38" fill="#c9d1d9" font-weight="bold">One Protocol</text>
+  <text x="60" y="280" font-size="16" fill="#8b949e">Remote + local. Lightning + ecash.</text>
+  <text x="60" y="305" font-size="16" fill="#8b949e">Every payment scenario covered.</text>
+
+  <!-- Badges -->
+  <rect x="60" y="340" width="90" height="28" rx="4" fill="#161b22" stroke="#f97316" stroke-width="1"/>
+  <text x="105" y="359" text-anchor="middle" font-size="12" fill="#f97316">NIP-47</text>
+  <rect x="162" y="340" width="90" height="28" rx="4" fill="#161b22" stroke="#27c93f" stroke-width="1"/>
+  <text x="207" y="359" text-anchor="middle" font-size="12" fill="#27c93f">NIP-60</text>
+
+  <!-- Right side: two wallet paths -->
+  <rect x="620" y="100" width="520" height="440" rx="8" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+
+  <!-- Your App at top -->
+  <rect x="760" y="125" width="240" height="40" rx="6" fill="#0d1117" stroke="#c9d1d9" stroke-width="1"/>
+  <text x="880" y="150" text-anchor="middle" font-size="14" fill="#c9d1d9" font-weight="bold">Your App</text>
+
+  <!-- Split into two paths -->
+  <line x1="810" y1="165" x2="760" y2="200" stroke="#484f58" stroke-width="1"/>
+  <line x1="950" y1="165" x2="1000" y2="200" stroke="#484f58" stroke-width="1"/>
+
+  <!-- NWC path (left) -->
+  <rect x="660" y="205" width="200" height="210" rx="8" fill="#0d1117" stroke="#f97316" stroke-width="1"/>
+  <text x="760" y="235" text-anchor="middle" font-size="14" fill="#f97316" font-weight="bold">NWC</text>
+  <text x="760" y="258" text-anchor="middle" font-size="11" fill="#484f58">NIP-47</text>
+
+  <text x="680" y="290" font-size="11" fill="#8b949e">Remote wallet</text>
+  <text x="680" y="312" font-size="11" fill="#484f58">Pay invoices</text>
+  <text x="680" y="332" font-size="11" fill="#484f58">Create invoices</text>
+  <text x="680" y="352" font-size="11" fill="#484f58">Lightning routing</text>
+  <text x="680" y="372" font-size="11" fill="#484f58">Always-on receiving</text>
+  <text x="680" y="402" font-size="11" fill="#f97316">Connection string</text>
+
+  <!-- NIP-60 path (right) -->
+  <rect x="900" y="205" width="200" height="210" rx="8" fill="#0d1117" stroke="#27c93f" stroke-width="1"/>
+  <text x="1000" y="235" text-anchor="middle" font-size="14" fill="#27c93f" font-weight="bold">Ecash</text>
+  <text x="1000" y="258" text-anchor="middle" font-size="11" fill="#484f58">NIP-60</text>
+
+  <text x="920" y="290" font-size="11" fill="#8b949e">Local wallet</text>
+  <text x="920" y="312" font-size="11" fill="#484f58">Bearer tokens</text>
+  <text x="920" y="332" font-size="11" fill="#484f58">Cross-client portable</text>
+  <text x="920" y="352" font-size="11" fill="#484f58">Blind signatures</text>
+  <text x="920" y="372" font-size="11" fill="#484f58">Peer-to-peer</text>
+  <text x="920" y="402" font-size="11" fill="#27c93f">Nostr key</text>
+
+  <!-- Both converge to nostr-core -->
+  <line x1="760" y1="415" x2="810" y2="450" stroke="#484f58" stroke-width="1"/>
+  <line x1="1000" y1="415" x2="950" y2="450" stroke="#484f58" stroke-width="1"/>
+
+  <rect x="680" y="455" width="400" height="45" rx="6" fill="#0d1117" stroke="#f97316" stroke-width="2"/>
+  <text x="880" y="483" text-anchor="middle" font-size="13" fill="#f97316" font-weight="bold">import { NWC, nip60 } from 'nostr-core'</text>
+
+  <!-- Watermark -->
+  <text x="1160" y="595" text-anchor="end" font-size="11" fill="#30363d">nostr-core</text>
+
+  <rect y="626" width="1200" height="4" rx="0" fill="url(#accent)"/>
+</svg>
