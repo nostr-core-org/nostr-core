@@ -75,6 +75,8 @@ export type Bolt11Invoice = {
   signature: string
   /** Signature recovery flag (0-3) */
   recoveryFlag: number
+  /** True if payee node key recovery from signature failed */
+  signatureRecoveryFailed?: boolean
   /** Unrecognized tagged fields */
   unknownTags: { tag: number; words: number[] }[]
 }
@@ -265,6 +267,7 @@ export function decode(invoice: string): Bolt11Invoice {
   let description: string | undefined
   let descriptionHash: string | undefined
   let payeeNodeKey: string | undefined
+  let signatureRecoveryFailed = false
   let expiry = 3600
   let minFinalCltvExpiry = 18
   let featureBits: Uint8Array | undefined
@@ -371,7 +374,7 @@ export function decode(invoice: string): Bolt11Invoice {
         .addRecoveryBit(recoveryFlag)
       payeeNodeKey = sig.recoverPublicKey(msgHash).toHex(true)
     } catch {
-      // Recovery failed; payeeNodeKey stays undefined
+      signatureRecoveryFailed = true
     }
   }
 
@@ -393,6 +396,7 @@ export function decode(invoice: string): Bolt11Invoice {
     description,
     descriptionHash,
     payeeNodeKey,
+    signatureRecoveryFailed: signatureRecoveryFailed || undefined,
     minFinalCltvExpiry,
     featureBits,
     metadata,
