@@ -1,8 +1,8 @@
 ---
 name: nostr-primitives
-description: Use nostr-core's low-level Nostr protocol primitives to build custom applications. Covers 39 NIPs including key generation, event signing, relay connections, encryption (NIP-04/NIP-44), gift wrapping (NIP-59), relay metadata (NIP-65), private DMs (NIP-17), bech32 encoding (NIP-19), URI scheme (NIP-21), threads (NIP-10), reactions (NIP-25), deletion (NIP-09), comments (NIP-22), long-form content (NIP-23), lists (NIP-51), zaps (NIP-57), badges (NIP-58), groups (NIP-29), DNS verification (NIP-05), relay info (NIP-11), HTTP auth (NIP-98), and more.
+description: Use nostr-core's low-level Nostr protocol primitives to build custom applications. Covers 40+ NIPs including key generation, event signing, relay connections, encryption (NIP-04/NIP-44), gift wrapping (NIP-59), relay metadata (NIP-65), private DMs (NIP-17), bech32 encoding (NIP-19), URI scheme (NIP-21), threads (NIP-10), reactions (NIP-25), deletion (NIP-09), comments (NIP-22), long-form content (NIP-23), lists (NIP-51), zaps (NIP-57), badges (NIP-58), eCash/Cashu wallets (NIP-60), Blossom media (NIP-B7), groups (NIP-29), DNS verification (NIP-05), relay info (NIP-11), HTTP auth (NIP-98), BOLT-11 invoice decoding, and more.
 user-invocable: true
-argument-hint: "[keys, events, relays, encryption, giftwrap, relaylist, dm, encoding, signer, nip07, nip46, deletion, threads, reactions, comments, articles, lists, zaps, badges, calendars, zapgoals, groups, dns, auth, emoji, uri, lnurl, lnurl-pay, or lnurl-withdraw]"
+argument-hint: "[keys, events, relays, encryption, giftwrap, relaylist, dm, encoding, signer, nip07, nip46, deletion, threads, reactions, comments, articles, lists, zaps, badges, ecash, cashu, bolt11, blossom, media, calendars, zapgoals, groups, dns, auth, emoji, uri, lnurl, lnurl-pay, or lnurl-withdraw]"
 ---
 
 # Nostr Protocol Primitives with nostr-core
@@ -1397,6 +1397,189 @@ const res = await fetch('https://api.example.com/upload', {
 // Server-side verification
 const valid = nip98.verifyHttpAuthEvent(authEvent, { url, method, body }) // boolean
 ```
+
+---
+
+## eCash / Cashu Wallets (NIP-60)
+
+```typescript
+import { nip60, generateSecretKey, randomBytes, bytesToHex } from 'nostr-core'
+
+const sk = generateSecretKey()
+
+// Create a Cashu wallet with a dedicated private key and mint list
+const walletPrivkey = bytesToHex(randomBytes(32))
+const walletEvent = nip60.createWalletEvent({
+  privkey: walletPrivkey,                    // Wallet-exclusive key (for NIP-61 nutzaps)
+  mints: ['https://mint.minibits.cash'],     // Trusted mints
+}, sk)
+// Kind 17375, replaceable, NIP-44 encrypted to self
+
+// Store unspent Cashu proofs in a token event
+const tokenEvent = nip60.createTokenEvent({
+  mint: 'https://mint.minibits.cash',
+  unit: 'sat',
+  proofs: [
+    { id: '009a1f293253e41e', amount: 1, secret: 'secret1', C: '02abc...' },
+    { id: '009a1f293253e41e', amount: 4, secret: 'secret2', C: '03def...' },
+    { id: '009a1f293253e41e', amount: 8, secret: 'secret3', C: '02ghi...' },
+  ],
+}, sk)
+// Kind 7375, NIP-44 encrypted to self
+
+// Read token proofs and check balance
+const token = nip60.parseTokenEvent(tokenEvent, sk)
+console.log(token.mint)                          // 'https://mint.minibits.cash'
+console.log(nip60.getProofsBalance(token.proofs)) // 13 sats
+
+// After spending: create new token with change, delete old one
+const newTokenEvent = nip60.createTokenEvent({
+  mint: 'https://mint.minibits.cash',
+  unit: 'sat',
+  proofs: [{ id: '009a1f293253e41e', amount: 8, secret: 'secret3', C: '02ghi...' }],
+  del: [tokenEvent.id],  // References the destroyed token
+}, sk)
+const deleteEvent = nip60.createTokenDeleteEvent([tokenEvent.id], sk) // Kind 5 with ["k","7375"]
+
+// Record spending history
+const historyEvent = nip60.createHistoryEvent({
+  direction: 'out',
+  amount: '5',
+  unit: 'sat',
+  events: [
+    { id: tokenEvent.id, marker: 'destroyed' },
+    { id: newTokenEvent.id, marker: 'created' },
+  ],
+}, sk)
+// Kind 7376, encrypted (except "redeemed" marker tags)
+
+// Track pending mint quotes (Lightning payment in-flight)
+const quoteEvent = nip60.createQuoteEvent({
+  quoteId: 'quote-abc-123',
+  mint: 'https://mint.minibits.cash',
+  expiration: Math.floor(Date.now() / 1000) + 86400,
+}, sk)
+
+// Fetch wallet + tokens from relays
+const filters = nip60.getWalletFilters(pubkey) // kinds [17375, 7375]
+```
+
+**Key points:**
+- All content NIP-44 encrypted to self (user's own keypair)
+- Wallet `privkey` is dedicated for NIP-61 nutzaps, NOT the Nostr key
+- Token deletion uses NIP-09 with `["k", "7375"]` tag
+- `del` array in new tokens references destroyed event IDs for state tracking
+
+---
+
+## BOLT-11 Invoice Decoding
+
+```typescript
+import { bolt11 } from 'nostr-core'
+
+// Decode a Lightning invoice
+const decoded = bolt11.decode('lnbc2500u1pvjluez...')
+
+console.log(decoded.network)         // 'mainnet'
+console.log(decoded.amountMsat)      // 250000000 (millisatoshis)
+console.log(decoded.amountSat)       // 250000
+console.log(decoded.paymentHash)     // '0001020304...' (hex)
+console.log(decoded.paymentSecret)   // '1111111111...' (hex)
+console.log(decoded.description)     // '1 cup coffee'
+console.log(decoded.payeeNodeKey)    // '03e7156a...' (compressed pubkey)
+console.log(decoded.expiry)          // 60 (seconds)
+console.log(decoded.isExpired)       // true/false
+console.log(decoded.timestamp)       // Unix timestamp
+console.log(decoded.routeHints)      // Private channel route hints
+console.log(decoded.minFinalCltvExpiry) // CLTV delta (default 18)
+
+// Works with uppercase (QR codes) and lightning: prefix
+bolt11.decode('LNBC10U1P...')
+bolt11.decode('lightning:lnbc10u1p...')
+
+// Validate before paying
+if (decoded.isExpired) {
+  console.log('Invoice expired!')
+} else if (!decoded.amountMsat) {
+  console.log('Zero-amount invoice — specify amount when paying')
+}
+```
+
+**Decoded fields:** `paymentRequest`, `prefix`, `network`, `amountMsat`, `amountSat`, `timestamp`, `expiry`, `expiresAt`, `isExpired`, `paymentHash`, `paymentSecret`, `description`, `descriptionHash`, `payeeNodeKey`, `minFinalCltvExpiry`, `featureBits`, `metadata`, `routeHints`, `fallbackAddresses`, `signature`, `recoveryFlag`
+
+---
+
+## Blossom Media (NIP-B7)
+
+```typescript
+import { blossom, generateSecretKey, getPublicKey } from 'nostr-core'
+
+const sk = generateSecretKey()
+const pk = getPublicKey(sk)
+
+// Declare your preferred Blossom servers (kind 10063)
+const serverList = blossom.createServerListEvent(
+  ['https://blossom.self.hosted', 'https://cdn.blossom.cloud'],
+  sk,
+)
+// Publish to relays so clients know where your media lives
+
+// Parse someone's server list
+const servers = blossom.parseServerList(serverListEvent)
+
+// Upload a blob
+const imageData = new Uint8Array([...]) // Your image bytes
+const hash = blossom.getBlobHash(imageData)
+
+// Create authorization token (kind 24242)
+const uploadAuth = blossom.createAuthEvent({
+  action: 'upload',
+  content: 'Upload Image',
+  expiration: Math.floor(Date.now() / 1000) + 300,
+  hashes: [hash],
+  size: imageData.length,
+}, sk)
+
+const descriptor = await blossom.uploadBlob(
+  'https://blossom.self.hosted', imageData, uploadAuth, 'image/png',
+)
+console.log(descriptor.url)    // 'https://blossom.self.hosted/abc...def.png'
+console.log(descriptor.sha256) // 'abc...def'
+
+// Check if blob exists on another server
+const exists = await blossom.checkBlob('https://cdn.blossom.cloud', hash)
+
+// Mirror to backup server
+const mirrorAuth = blossom.createAuthEvent({
+  action: 'upload',
+  content: 'Mirror Blob',
+  expiration: Math.floor(Date.now() / 1000) + 300,
+  hashes: [hash],
+}, sk)
+await blossom.mirrorBlob('https://cdn.blossom.cloud', descriptor.url, mirrorAuth)
+
+// List all your uploads
+const blobs = await blossom.listBlobs('https://blossom.self.hosted', pk, { limit: 20 })
+
+// Download a blob
+const data = await blossom.getBlob('https://cdn.blossom.cloud', hash)
+
+// Delete a blob
+const deleteAuth = blossom.createAuthEvent({
+  action: 'delete',
+  content: 'Delete old image',
+  expiration: Math.floor(Date.now() / 1000) + 300,
+  hashes: [hash],
+}, sk)
+await blossom.deleteBlob('https://blossom.self.hosted', hash, deleteAuth)
+```
+
+**Key points:**
+- Blobs are **content-addressed** by SHA-256 hash — same file = same hash everywhere
+- Kind 10063 declares user's servers; clients use this to discover media sources
+- Kind 24242 auth tokens scope access by action, hash, expiration, and server
+- `getBlobHash(data)` computes the SHA-256 identifier for a blob
+- When a URL breaks, clients look up the hash in the user's Blossom server list
 
 ---
 

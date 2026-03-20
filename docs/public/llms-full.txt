@@ -1,8 +1,8 @@
 # nostr-core - Full Documentation
 
-> Dead-simple, vendor-neutral Nostr client library for JavaScript and TypeScript. Control any Lightning wallet via NIP-47, sign events with browser extensions (NIP-07) or remote signers (NIP-46), discover user relays (NIP-65), and send private encrypted messages (NIP-17/NIP-59).
+> Dead-simple, vendor-neutral Nostr client library for JavaScript and TypeScript. 40+ NIPs: wallet operations (NIP-47), eCash wallets (NIP-60), Blossom media (NIP-B7), BOLT-11 invoice decoding, signing (NIP-07, NIP-46), encryption (NIP-04, NIP-44), relay management, social features, identity, messaging, payments, and more.
 
-nostr-core is a lightweight library for interacting with Bitcoin Lightning wallets over the Nostr network using the NIP-47 protocol, with a unified Signer interface for secret keys, browser extensions (NIP-07), and remote signers (NIP-46), relay list metadata (NIP-65), gift wrapping (NIP-59), and private direct messages (NIP-17). Pass in a connection string, and start making payments, creating invoices, and listening for real-time notifications.
+nostr-core is a comprehensive library for interacting with Bitcoin Lightning wallets over the Nostr network using the NIP-47 protocol, with Cashu eCash wallet support (NIP-60), Blossom media uploads (NIP-B7), BOLT-11 invoice decoding, a unified Signer interface for secret keys, browser extensions (NIP-07), and remote signers (NIP-46), relay list metadata (NIP-65), gift wrapping (NIP-59), and private direct messages (NIP-17). Pass in a connection string, and start making payments, creating invoices, and listening for real-time notifications.
 
 ---
 
@@ -888,6 +888,12 @@ The connection string format is:
 nostr+walletconnect://<walletPubkey>?relay=<relayUrl>&secret=<hexOrNsec>
 ```
 
+Multiple relays are supported — the client connects to all and publishes to all for redundancy:
+
+```
+nostr+walletconnect://<pubkey>?relay=wss://relay1.com&relay=wss://relay2.com&secret=<hex>
+```
+
 ## Static Methods
 
 ### parseConnectionString
@@ -896,9 +902,9 @@ nostr+walletconnect://<walletPubkey>?relay=<relayUrl>&secret=<hexOrNsec>
 NWC.parseConnectionString(connectionString: string): NWCConnectionOptions
 ```
 
-Parses a connection string without creating a client.
+Parses a connection string without creating a client. Extracts all `relay` params via `getAll('relay')`.
 
-**Returns:** `NWCConnectionOptions`
+**Returns:** `NWCConnectionOptions` — includes `relayUrl` (first relay) and `relayUrls` (all relays)
 
 ## Properties
 
@@ -1091,7 +1097,8 @@ import type {
 ```ts
 type NWCConnectionOptions = {
   walletPubkey: string
-  relayUrl: string
+  relayUrl: string      // Primary relay (first in connection string)
+  relayUrls: string[]   // All relays from the connection string
   secret: string
 }
 ```
@@ -3402,6 +3409,141 @@ const wrap = nip17.wrapDirectMessage('Hello Bob!', aliceSk, bobPk)
 const dm = nip17.unwrapDirectMessage(wrap, bobSk)
 console.log(dm.sender)  // Alice's pubkey
 console.log(dm.content) // "Hello Bob!"
+```
+
+---
+
+# API Reference: NIP-60 (Cashu Wallets)
+
+Store and manage Cashu eCash wallets on Nostr. Wallet metadata (kind 17375), unspent proofs (kind 7375), spending history (kind 7376), and quote tracking (kind 7374). All NIP-44 encrypted to self.
+
+## Import
+
+```ts
+import { nip60 } from 'nostr-core'
+```
+
+## Event Kinds
+
+| Constant | Value | Description |
+|----------|-------|-------------|
+| `WALLET_KIND` | `17375` | Wallet metadata (replaceable) |
+| `TOKEN_KIND` | `7375` | Unspent proofs/tokens |
+| `HISTORY_KIND` | `7376` | Spending history |
+| `QUOTE_KIND` | `7374` | Pending mint quotes |
+
+## Functions
+
+- `createWalletEvent(wallet, secretKey)` / `createWalletEventTemplate(wallet, secretKey)` — Kind 17375 wallet with privkey + mint list
+- `parseWalletEvent(event, secretKey)` — Decrypt wallet event → `{ privkey, mints }`
+- `createTokenEvent(token, secretKey)` / `createTokenEventTemplate(token, secretKey)` — Kind 7375 token with proofs
+- `parseTokenEvent(event, secretKey)` — Decrypt token event → `{ mint, proofs, unit, del }`
+- `createHistoryEvent(history, secretKey)` / `createHistoryEventTemplate(history, secretKey)` — Kind 7376 transaction record
+- `parseHistoryEvent(event, secretKey)` — Decrypt history → `{ direction, amount, unit, events }`
+- `createQuoteEvent(quote, secretKey)` / `createQuoteEventTemplate(quote, secretKey)` — Kind 7374 pending quote
+- `parseQuoteEvent(event, secretKey)` — Decrypt quote → `{ quoteId, mint, expiration }`
+- `createTokenDeleteEvent(tokenEventIds, secretKey)` — Kind 5 deletion with `["k","7375"]`
+- `getWalletFilters(pubkey)` — Filters for wallet + token events
+- `getHistoryFilter(pubkey)` — Filter for history events
+- `getProofsBalance(proofs)` — Sum proof amounts
+
+## Example
+
+```ts
+import { nip60, generateSecretKey, randomBytes, bytesToHex } from 'nostr-core'
+
+const sk = generateSecretKey()
+
+// Create wallet
+const walletEvent = nip60.createWalletEvent({
+  privkey: bytesToHex(randomBytes(32)),
+  mints: ['https://mint.minibits.cash'],
+}, sk)
+
+// Store tokens
+const tokenEvent = nip60.createTokenEvent({
+  mint: 'https://mint.minibits.cash',
+  unit: 'sat',
+  proofs: [
+    { id: '009a1f293253e41e', amount: 1, secret: 's1', C: '02...' },
+    { id: '009a1f293253e41e', amount: 4, secret: 's2', C: '03...' },
+  ],
+}, sk)
+
+// Read back
+const token = nip60.parseTokenEvent(tokenEvent, sk)
+console.log(nip60.getProofsBalance(token.proofs)) // 5
+```
+
+---
+
+# API Reference: Blossom Media (NIP-B7)
+
+Upload, download, and manage media blobs on content-addressable Blossom servers. Implements BUD-01 (retrieval), BUD-02 (upload/delete/list), BUD-03 (server lists, kind 10063), BUD-04 (mirroring), and BUD-11 (authorization, kind 24242).
+
+## Import
+
+```ts
+import { blossom } from 'nostr-core'
+```
+
+## Functions
+
+- `createServerListEvent(servers, secretKey)` — Kind 10063 server list
+- `parseServerList(event)` — Parse server URLs from event
+- `createAuthEvent(opts, secretKey)` — Kind 24242 authorization token (actions: get, upload, list, delete, media)
+- `getAuthorizationHeader(event)` — Encode auth as `Nostr <base64url>` header
+- `uploadBlob(serverUrl, data, authEvent, contentType?)` — PUT /upload (BUD-02)
+- `getBlob(serverUrl, sha256, ext?)` — GET /<sha256> (BUD-01)
+- `checkBlob(serverUrl, sha256)` — HEAD /<sha256> (BUD-01)
+- `deleteBlob(serverUrl, sha256, authEvent)` — DELETE /<sha256> (BUD-02)
+- `listBlobs(serverUrl, pubkey, opts?)` — GET /list/<pubkey> (BUD-02)
+- `mirrorBlob(serverUrl, sourceUrl, authEvent)` — PUT /mirror (BUD-04)
+- `getBlobHash(data)` — SHA-256 hash of blob data
+
+## Example
+
+```ts
+import { blossom, generateSecretKey } from 'nostr-core'
+const sk = generateSecretKey()
+const data = new Uint8Array([...])
+const hash = blossom.getBlobHash(data)
+
+const auth = blossom.createAuthEvent({
+  action: 'upload', content: 'Upload Image',
+  expiration: Math.floor(Date.now() / 1000) + 300,
+  hashes: [hash], size: data.length,
+}, sk)
+
+const desc = await blossom.uploadBlob('https://cdn.blossom.cloud', data, auth, 'image/png')
+console.log(desc.url) // 'https://cdn.blossom.cloud/abc123...def.png'
+```
+
+---
+
+# API Reference: BOLT-11 Invoice Decoder
+
+Decode BOLT-11 Lightning invoices — extract amount, payment hash, description, expiry, route hints, and payee node key.
+
+## Import
+
+```ts
+import { bolt11, decodeBolt11 } from 'nostr-core'
+```
+
+## bolt11.decode(invoice)
+
+Returns a `Bolt11Invoice` with fields: `paymentRequest`, `prefix`, `network`, `amountMsat`, `amountSat`, `timestamp`, `expiry`, `expiresAt`, `isExpired`, `paymentHash`, `paymentSecret`, `description`, `descriptionHash`, `payeeNodeKey`, `minFinalCltvExpiry`, `featureBits`, `metadata`, `routeHints`, `fallbackAddresses`, `signature`, `recoveryFlag`.
+
+Accepts uppercase (QR codes) and `lightning:` URI prefix.
+
+```ts
+const decoded = bolt11.decode('lnbc2500u1pvjluez...')
+console.log(decoded.amountSat)     // 250000
+console.log(decoded.paymentHash)   // '0001020304...'
+console.log(decoded.description)   // '1 cup coffee'
+console.log(decoded.isExpired)     // true/false
+console.log(decoded.payeeNodeKey)  // '03e7156a...'
 ```
 
 ---

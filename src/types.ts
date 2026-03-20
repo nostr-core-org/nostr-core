@@ -208,6 +208,9 @@ export type Nip47Notification = {
 // Parsed NWC connection options
 export type NWCConnectionOptions = {
   walletPubkey: string
+  /** Primary relay URL (first relay in the connection string) */
   relayUrl: string
+  /** All relay URLs from the connection string */
+  relayUrls: string[]
   secret: string
 }
