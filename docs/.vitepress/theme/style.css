@@ -182,3 +182,13 @@ div[class*='language-']::before {
   gap: 1rem;
   margin: 1.5rem 0;
 }
+
+/* ---- Blog page layout - full width content ---- */
+
+.blog-page .VPDoc .container {
+  max-width: 100% !important;
+}
+
+.blog-page .content-container {
+  max-width: 100% !important;
+}

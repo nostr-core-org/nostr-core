@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 840 80" fill="none">
+  <style>
+    text { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; }
+  </style>
+  <rect width="840" height="80" rx="8" fill="#0d1117" stroke="#30363d" stroke-width="1"/>
+  <text x="40" y="34" font-size="20" fill="#c9d1d9" font-weight="bold">Relay Management</text>
+  <text x="40" y="58" font-size="13" fill="#8b949e">Relay connections, pool abstraction, subscriptions, and event routing</text>
+  <rect y="76" width="840" height="4" fill="#ffbd2e"/>
+</svg>

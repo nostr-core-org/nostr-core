@@ -6,6 +6,7 @@ import ComparisonBar from './components/ComparisonBar.vue'
 import FeatureGrid from './components/FeatureGrid.vue'
 import FeatureCard from './components/FeatureCard.vue'
 import TeamCard from './components/TeamCard.vue'
+import BlogCard from './components/BlogCard.vue'
 import './style.css'
 
 export default {
@@ -17,5 +18,6 @@ export default {
     app.component('FeatureGrid', FeatureGrid)
     app.component('FeatureCard', FeatureCard)
     app.component('TeamCard', TeamCard)
+    app.component('BlogCard', BlogCard)
   },
 } satisfies Theme
