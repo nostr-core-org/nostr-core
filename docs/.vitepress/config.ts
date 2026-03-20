@@ -17,7 +17,7 @@ export default defineConfig({
 
     nav: [
       { text: 'Home', link: '/' },
-      { text: 'Blogs', link: '/blog/' },
+      { text: 'Blogs', link: '/blog/', activeMatch: '/blog/' },
       { text: 'Guide', link: '/guide/introduction' },
       { text: 'API Reference', link: '/api/nwc' },
       { text: 'Agent Docs', link: '/agent' },

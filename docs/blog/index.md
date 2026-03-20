@@ -95,6 +95,8 @@ title: Blogs
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  line-height: 1.2;
+  padding-top: 0.1em;
   margin: 0 0 0.75rem;
 }
 
