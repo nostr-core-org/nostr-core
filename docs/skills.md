@@ -4,7 +4,7 @@ outline: deep
 
 # Agent Skills (Claude Code Plugin)
 
-nostr-core ships as a **Claude Code plugin** with 4 agent skills that teach AI agents how to build Lightning-enabled applications. Skills can be invoked manually via slash commands or auto-detected by Claude based on context.
+nostr-core ships as a **Claude Code plugin** with 10 agent skills that teach AI agents how to build Lightning-enabled applications. Skills can be invoked manually via slash commands or auto-detected by Claude based on context.
 
 ## Installing the Plugin
 
@@ -31,6 +31,115 @@ Add to your project's `.claude/settings.json`:
 ```
 
 ## Available Skills
+
+### `/navigate-nostr` - Navigate the Nostr Ecosystem
+
+Find the right specification, repository, or resource for any Nostr feature. This skill acts as a compass for the protocol ecosystem -- it points you to the correct NIPs, LNURL LUDs, Cashu NUTs, Blossom BUDs, and maps each to the corresponding nostr-core module. Covers:
+
+- Nostr protocol NIPs -- how to find and read them, look up event kinds
+- LNURL protocol (LUD specs) and Lightning Address
+- BOLT-11 invoice format
+- NWC / NIP-47 wallet connection
+- eCash / Cashu (NIP-60 + NUT specs)
+- Blossom media storage (BUD specs)
+- Encryption guidance (NIP-04 vs NIP-44)
+- Full module map linking every nostr-core module to its spec
+
+```
+/navigate-nostr
+```
+
+---
+
+### `/nostr-identity` - Nostr Identity Management
+
+Generate and manage Nostr identities. Covers:
+
+- Keypair generation (`generateSecretKey`, `getPublicKey`)
+- BIP-39 mnemonic derivation (NIP-06)
+- NIP-05 DNS verification (`queryNip05`, `verifyNip05`)
+- Unified Signer interface (secret key, NIP-07 browser extension, NIP-46 remote signer)
+- Bech32 encoding/decoding (npub, nsec, nevent, nprofile)
+- Profile publishing (kind 0)
+
+```
+/nostr-identity keys
+/nostr-identity mnemonic
+/nostr-identity nip05
+/nostr-identity signer
+/nostr-identity nip46
+```
+
+---
+
+### `/nostr-messaging` - Nostr Communication
+
+Send and receive messages on the Nostr network. Covers:
+
+- Private DMs with gift wrap (NIP-17) -- sender metadata hidden from relays
+- Public notes (kind 1) with thread replies (NIP-10) and reactions (NIP-25)
+- Public chat channels (NIP-28) -- create, post, read
+- Relay-based groups (NIP-29) -- group chat and metadata
+- Real-time subscriptions with `Relay` and `RelayPool`
+
+```
+/nostr-messaging dm
+/nostr-messaging note
+/nostr-messaging channel
+/nostr-messaging group
+/nostr-messaging listen
+```
+
+---
+
+### `/nostr-social` - Social Features
+
+Build social interactions on Nostr. Covers:
+
+- Threaded replies (NIP-10) -- parse and build thread references
+- Reactions (NIP-25) -- like, dislike, custom emoji
+- Reposts (NIP-18) -- text and generic reposts
+- Long-form articles (NIP-23) -- publish and parse
+- Comments (NIP-22) -- comment on events, URLs, or any content
+- Follow lists (NIP-02) -- manage contacts
+- Lists and bookmarks (NIP-51) -- public and encrypted private items
+- Badges (NIP-58) -- define, award, check status
+- Calendar events (NIP-52) -- date-based, time-based, RSVP
+- Zaps and zap goals (NIP-57, NIP-75) -- Lightning-powered reactions
+- Content moderation (NIP-36, NIP-56, NIP-09, NIP-40)
+- Custom emoji (NIP-30)
+
+```
+/nostr-social threads
+/nostr-social reactions
+/nostr-social articles
+/nostr-social follows
+/nostr-social badges
+/nostr-social zaps
+/nostr-social calendar
+/nostr-social moderation
+```
+
+---
+
+### `/lnbits-mcp` - LNbits Wallet + MCP Integration
+
+Connect nostr-core to a LNbits Lightning wallet and set up the LNbits MCP Server. Covers:
+
+- Getting an NWC connection string from the LNbits NWC extension
+- Connecting and verifying capabilities
+- Basic wallet operations (balance, invoices, payments, notifications)
+- Error handling with typed errors
+- LNbits MCP Server installation and setup (30+ tools)
+- Claude Desktop configuration for conversational wallet control
+
+```
+/lnbits-mcp connect
+/lnbits-mcp mcp
+/lnbits-mcp full
+```
+
+---
 
 ### `/nwc-integrate` - NWC Wallet Integration
 
@@ -83,6 +192,25 @@ Monitor wallet activity and analyze transaction history. Covers:
 /wallet-monitor listen
 /wallet-monitor history last 7 days
 /wallet-monitor create-invoice 1000 sats
+```
+
+---
+
+### `/lightning-agent` - Complete Agent Scaffold
+
+Copy-paste a ready-made `LightningAgent` class that combines wallet, messaging, and identity. Covers:
+
+- Minimal wallet-only agent (balance, invoices, payments, Lightning Address)
+- Full agent with wallet + DMs + notes + profile management
+- Fiat-denominated payments
+- Payment notification listeners
+- Error handling scaffold
+- Extension points (budget guards, threads, reactions, zaps)
+
+```
+/lightning-agent full
+/lightning-agent wallet-only
+/lightning-agent minimal
 ```
 
 ---
@@ -169,7 +297,7 @@ Comprehensive Nostr protocol toolkit (39 NIPs) for custom application developmen
 /lightning-pay send 500 sats to hello@getalby.com
 ```
 
-**Skill chaining:** Skills build on each other. Start with `/nwc-integrate` to set up the connection, then use `/lightning-pay` or `/wallet-monitor` for specific operations. Use `/nostr-primitives` only when building custom Nostr applications beyond NWC.
+**Skill chaining:** Skills build on each other. Start with `/navigate-nostr` to find the right specs and modules. Use `/nostr-identity` to create a keypair, `/lnbits-mcp` to connect a wallet, `/lightning-pay` or `/wallet-monitor` for payment operations, `/nostr-messaging` for communication, and `/nostr-social` for social features. Use `/lightning-agent` to scaffold a complete agent class. Use `/nwc-integrate` for generic NWC setup beyond LNbits. Use `/nostr-primitives` for low-level protocol access.
 
 ## Publishing Your Own Marketplace
 
