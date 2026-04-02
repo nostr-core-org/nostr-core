@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh issue:*)",
+      "Bash(gh label:*)",
+      "Bash(grep -E \"\\\\.\\(md|json|ts|js\\)$\")",
+      "Bash(gh pr:*)",
+      "Bash(git worktree:*)",
+      "Bash(gh api:*)",
+      "Bash(git:*)",
+      "WebFetch(domain:raw.githubusercontent.com)"
+    ]
+  }
+}
