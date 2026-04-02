@@ -8,7 +8,11 @@
       "Bash(git worktree:*)",
       "Bash(gh api:*)",
       "Bash(git:*)",
-      "WebFetch(domain:raw.githubusercontent.com)"
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(curl -s \"https://api.github.com/repos/bramkanstein/startwithbitcoin-skill/git/trees/main?recursive=1\")",
+      "Bash(python3 -m json.tool)",
+      "Bash(curl:*)",
+      "WebFetch(domain:docs.lnbits.com)"
     ]
   }
 }

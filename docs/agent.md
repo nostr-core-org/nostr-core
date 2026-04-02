@@ -119,10 +119,16 @@ See the API docs for [NIP-59](/api/nip59) and [NIP-17](/api/nip17).
 
 ## Claude Code Plugin
 
-nostr-core is also available as a **Claude Code plugin** with 4 agent skills for building Lightning-enabled applications:
+nostr-core is also available as a **Claude Code plugin** with 10 agent skills for building Lightning-enabled applications:
 
 | Skill | Command | Description |
 |-------|---------|-------------|
+| Navigate Nostr | `/navigate-nostr` | Find the right NIPs, LNURL LUDs, Cashu NUTs, Blossom BUDs, and map them to nostr-core modules |
+| Nostr Identity | `/nostr-identity` | Generate keypairs, derive from mnemonic, verify NIP-05, set up signers (NIP-07, NIP-46) |
+| Nostr Messaging | `/nostr-messaging` | Private DMs (NIP-17), public notes, channels (NIP-28), groups (NIP-29), subscriptions |
+| Nostr Social | `/nostr-social` | Threads, reactions, reposts, articles, follows, badges, calendar, zaps, moderation |
+| Lightning Agent | `/lightning-agent` | Copy-paste agent class with wallet, messaging, identity, and payments |
+| LNbits MCP | `/lnbits-mcp` | Connect to LNbits via NWC + MCP Server for conversational wallet control |
 | NWC Integration | `/nwc-integrate` | Set up nostr-core and connect to any NWC wallet |
 | Lightning Payments | `/lightning-pay` | Pay invoices, Lightning Addresses, fiat, and keysend |
 | Wallet Monitor | `/wallet-monitor` | Real-time notifications, transaction history, analytics |

@@ -296,6 +296,13 @@ All signers: signer.getPublicKey(), signer.signEvent(template), signer.nip04?.en
     const decrypted = lnurl.decryptAesSuccessAction(aesAction, preimage) // plaintext
     const valid = lnurl.verifyPayment(payResponse) // boolean
 
+## Navigate Nostr (Ecosystem References)
+For NIPs, LNURL LUDs, Cashu NUTs, and Blossom BUDs, use the /navigate-nostr skill or consult:
+- NIPs: https://github.com/nostr-protocol/nips/blob/master/{NIP}.md (README for event kind lookup)
+- LNURL LUDs: https://github.com/lnurl/luds/blob/luds/{LUD}.md
+- Cashu NUTs: https://github.com/cashubtc/nuts/blob/main/{NUT}.md
+- Blossom BUDs: https://github.com/hzrd149/blossom/blob/master/buds/{BUD}.md
+
 ## Rules
 - All amounts are in millisatoshis (1 sat = 1000 msats)
 - Always call connect() before operations and close() when done

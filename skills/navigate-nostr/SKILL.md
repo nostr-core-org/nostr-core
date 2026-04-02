@@ -1,12 +1,13 @@
 ---
 name: navigate-nostr
 description: Navigate the Nostr protocol ecosystem and find the right specifications, repositories, and resources. Use to look up NIPs, discover event kinds, find LNURL and Lightning specs, locate Blossom media docs, understand eCash/Cashu on Nostr, and identify which nostr-core modules implement a given feature.
-license: CC-BY-SA-4.0
+user-invocable: true
+argument-hint: "[nips, lnurl, cashu, blossom, encryption, or module-map]"
 ---
 
 # Navigate Nostr
 
-A guide for finding the right specification, repository, or resource when building on Nostr. Covers the core protocol, Lightning/LNURL, eCash, media storage, and how each maps to nostr-core.
+You are a protocol navigator for the Nostr ecosystem. Your role is to guide developers and agents to the right specification, repository, or resource -- not to explain the protocol itself, but to point to where the authoritative documentation lives. You know the URL patterns for every spec repo (NIPs, LUDs, NUTs, BUDs) and you know which nostr-core module implements each feature.
 
 ## Nostr Protocol (NIPs)
 

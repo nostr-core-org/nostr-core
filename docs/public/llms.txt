@@ -67,6 +67,12 @@ nostr-core lets agents and applications pay invoices, check balances, create inv
 - [NIP-65](api/nip65.md): Relay List Metadata - user relay preferences for read/write routing (parseRelayList, createRelayListEvent, getReadRelays, getWriteRelays)
 - [NIP-75](api/nip75.md): Zap Goals (createZapGoalEvent, parseZapGoal, isZapGoalOpen, calculateZapGoalProgress)
 - [NIP-98](api/nip98.md): HTTP Auth (createHttpAuthEvent, getAuthorizationHeader, verifyHttpAuthEvent)
+- [Navigate Nostr Skill](skills/navigate-nostr/SKILL.md): Agent skill for navigating the Nostr ecosystem - find the right NIPs, LNURL LUDs, Cashu NUTs, Blossom BUDs, and map each to its nostr-core module
+- [Nostr Identity Skill](skills/nostr-identity/SKILL.md): Generate and manage Nostr identities - keypairs, mnemonics (NIP-06), NIP-05 verification, signers (NIP-07, NIP-46), profiles
+- [Nostr Messaging Skill](skills/nostr-messaging/SKILL.md): Send and receive messages on Nostr - encrypted DMs (NIP-17), public notes, channels (NIP-28), groups (NIP-29), subscriptions
+- [Nostr Social Skill](skills/nostr-social/SKILL.md): Build social features on Nostr - threads, reactions, reposts, articles, follows, badges, calendar events, zaps, moderation
+- [Lightning Agent Skill](skills/lightning-agent/SKILL.md): Copy-paste agent scaffold combining wallet, messaging, identity, and payments into a reusable LightningAgent class
+- [LNbits MCP Skill](skills/lnbits-mcp/SKILL.md): Connect nostr-core to LNbits via NWC and set up the LNbits MCP Server for conversational wallet control
 - LNURL Protocol: encodeLnurl(), decodeLnurl(), isLnurl(), resolveUrl(), fetchPayRequest(), requestInvoice(), fetchWithdrawRequest(), submitWithdrawRequest(), parseLnurlMetadata(), parseSuccessAction(), decryptAesSuccessAction(), verifyPayment() — LUD-01/03/06/09/10/12/17/18/20/21
 - BOLT-11 Invoice Decoder: decodeBolt11() — extract amount, payment hash, description, expiry, route hints, payee node key from Lightning invoices
 - Blossom Media (NIP-B7): uploadBlob(), getBlob(), deleteBlob(), listBlobs(), mirrorBlob(), createServerListEvent(), createBlossomAuthEvent() — BUD-01/02/03/04/11 for content-addressable media storage
