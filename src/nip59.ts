@@ -1,4 +1,4 @@
-import { randomBytes } from '@noble/hashes/utils'
+import { randomBytes } from '@noble/hashes/utils.js'
 
 import { generateSecretKey, getPublicKey } from './crypto.js'
 import { finalizeEvent, getEventHash, verifyEvent, type EventTemplate, type NostrEvent } from './event.js'
