@@ -106,6 +106,16 @@ Upload, download, and manage media on content-addressable Blossom servers:
 
 See the API docs for [Blossom](/api/blossom).
 
+## RSS / Atom / JSON Feed Import
+
+Import articles from any blog feed and convert them into signed NIP-23 long-form events. Composes with Blossom for automatic image rehosting.
+
+| Module | Description |
+|--------|-------------|
+| `rss` | RSS 2.0 / Atom / JSON Feed parser, HTML → Markdown, deterministic `d`-tag, Blossom image mirror, end-to-end `importFeedAsDrafts` |
+
+Works with Blogger, WordPress, Substack, Ghost, Medium, Tumblr, and any feed that exposes RSS 2.0, Atom, or JSON Feed. See the API docs for [RSS Import](/api/rss).
+
 ## Private Messaging (NIP-59 & NIP-17)
 
 nostr-core supports multi-layer encrypted messaging:

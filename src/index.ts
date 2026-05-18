@@ -182,6 +182,18 @@ export type { CommentScope } from './nip22.js'
 export { createLongFormEventTemplate, createLongFormEvent, parseLongForm } from './nip23.js'
 export type { LongFormContent } from './nip23.js'
 
+// RSS / Atom / JSON Feed importer
+export * as rss from './rss.js'
+export {
+  parseFeed, fetchFeed, htmlToMarkdown,
+  itemToDraft, rehostImagesInMarkdown, importFeedAsDrafts,
+  RssError,
+} from './rss.js'
+export type {
+  Feed, FeedItem, FeedFormat,
+  ItemToDraftOptions, RehostOptions, RehostMode, ImportFeedOptions,
+} from './rss.js'
+
 // NIP-24
 export { parseExtendedMetadata, buildMetadataContent, parseUniversalTags, buildUniversalTags } from './nip24.js'
 export type { ExtendedMetadata, UniversalTags } from './nip24.js'

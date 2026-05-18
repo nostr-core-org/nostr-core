@@ -39,6 +39,7 @@ nwc.close()
 - **Signer abstraction** - unified `Signer` interface for secret keys, browser extensions (NIP-07), and remote signers (NIP-46)
 - **Zero framework deps** - built on audited [noble](https://paulmillr.com/noble/) cryptography libraries only
 - **ESM-only** - tree-shakeable, modern JavaScript
+- **RSS → Nostr** - import any blog feed (RSS, Atom, JSON Feed) as signed NIP-23 drafts, with optional Blossom image rehosting
 
 ## Install
 
