@@ -4,7 +4,7 @@ layout: home
 hero:
   name: nostr-core
   text: The complete Nostr toolkit
-  tagline: 40+ NIPs, NWC wallet client, eCash, BOLT-11, Blossom media, and protocol primitives for JavaScript and TypeScript
+  tagline: 40+ NIPs, NWC wallet client, eCash, BOLT-11, Blossom media, RSS import, and protocol primitives for JavaScript and TypeScript
   image:
     src: /nwc-logo.svg
     alt: nostr-core
@@ -53,6 +53,12 @@ hero:
     title="Cross-Runtime"
     details="Works on Node.js 18+, Deno, Bun, and Cloudflare Workers. Pure JavaScript, no native bindings."
     color="#897FFF"
+  />
+  <FeatureCard
+    icon="lucide:rss"
+    title="RSS to Nostr"
+    details="Import any blog feed (RSS, Atom, JSON Feed) as signed NIP-23 drafts, with optional Blossom image rehosting."
+    color="#F7931A"
   />
 </FeatureGrid>
 

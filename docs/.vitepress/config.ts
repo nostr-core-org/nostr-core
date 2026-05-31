@@ -131,6 +131,7 @@ export default defineConfig({
               { text: 'LNURL Protocol', link: '/api/lnurl' },
               { text: 'BOLT-11 Decoder', link: '/api/bolt11' },
               { text: 'Blossom Media', link: '/api/blossom' },
+              { text: 'RSS Import', link: '/api/rss' },
             ],
           },
           {
