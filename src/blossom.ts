@@ -193,6 +193,7 @@ export async function getBlob(
   serverUrl: string,
   sha256Hash: string,
   ext?: string,
+  verify = false,
 ): Promise<ArrayBuffer> {
   const path = ext ? `${sha256Hash}${ext}` : sha256Hash
   const res = await fetch(`${baseUrl(serverUrl)}/${path}`)
@@ -203,7 +204,17 @@ export async function getBlob(
       res.status,
     )
   }
-  return res.arrayBuffer()
+  const buf = await res.arrayBuffer()
+  if (verify) {
+    const actual = bytesToHex(sha256(new Uint8Array(buf)))
+    if (actual !== sha256Hash) {
+      throw new BlossomError(
+        `Hash mismatch: expected ${sha256Hash}, got ${actual}`,
+        'HASH_MISMATCH',
+      )
+    }
+  }
+  return buf
 }
 
 /**

@@ -168,9 +168,19 @@ export function parseTokenEvent(
     throw new Error(`Expected kind ${TOKEN_KIND}, got ${event.kind}`)
   }
   const data = JSON.parse(selfDecrypt(event.content, secretKey)) as Record<string, unknown>
+  if (!data.mint || !Array.isArray(data.proofs)) {
+    throw new Error('Invalid token event: missing mint or proofs')
+  }
+  const proofs = (data.proofs as Record<string, unknown>[]).map(p => {
+    if (typeof p.id !== 'string' || typeof p.amount !== 'number' ||
+        typeof p.secret !== 'string' || typeof p.C !== 'string') {
+      throw new Error('Invalid Cashu proof: missing required fields (id, amount, secret, C)')
+    }
+    return p as unknown as CashuProof
+  })
   return {
     mint: data.mint as string,
-    proofs: data.proofs as CashuProof[],
+    proofs,
     unit: (data.unit as string) || undefined,
     del: (data.del as string[]) || undefined,
   }
