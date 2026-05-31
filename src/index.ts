@@ -124,6 +124,8 @@ export * as nip58 from './nip58.js'
 export * as nip59 from './nip59.js'
 export * as nip60 from './nip60.js'
 export * as nip65 from './nip65.js'
+export * as nip68 from './nip68.js'
+export * as nip69 from './nip69.js'
 export * as nip75 from './nip75.js'
 export * as nip98 from './nip98.js'
 
@@ -312,6 +314,17 @@ export type { SearchFilter } from './nip50.js'
 // NIP-56
 export { createReportEventTemplate, createReportEvent, parseReport } from './nip56.js'
 export type { ReportType, ReportTarget } from './nip56.js'
+
+// NIP-68
+export {
+  createPictureEventTemplate, createPictureEvent, parsePicturePost,
+  buildImetaTag, parseImetaTag, PICTURE_KIND, ACCEPTED_MEDIA_TYPES,
+} from './nip68.js'
+export type { PicturePost, ImageMetadata, ImageAnnotation, TaggedUser } from './nip68.js'
+
+// NIP-69
+export { createOrderEventTemplate, createOrderEvent, parseOrder, ORDER_KIND } from './nip69.js'
+export type { P2POrder, OrderType, OrderStatus } from './nip69.js'
 
 // Networking
 export { Relay, Subscription } from './relay.js'

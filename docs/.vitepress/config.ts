@@ -120,6 +120,8 @@ export default defineConfig({
               { text: 'NIP-59', link: '/api/nip59' },
               { text: 'NIP-60', link: '/api/nip60' },
               { text: 'NIP-65', link: '/api/nip65' },
+              { text: 'NIP-68', link: '/api/nip68' },
+              { text: 'NIP-69', link: '/api/nip69' },
               { text: 'NIP-75', link: '/api/nip75' },
               { text: 'NIP-98', link: '/api/nip98' },
             ],

@@ -199,7 +199,7 @@ pool.close()
 - Root tags use uppercase letters: `E` (event), `A` (address), `I` (external)
 - Parent tags use lowercase letters: `e` (event), `a` (address), `i` (external)
 - `K`/`k` tags specify the kind of the root/parent event respectively
-- `p` tags notify the authors of the root and parent events
+- Author tags follow the same casing: `P` notifies the **root** author, `p` notifies the **parent** author (so the two don't collide on top-level comments)
 - Event roots use the event ID; address roots use `kind:pubkey:d-tag` format
 - External roots can be any identifier (URL, podcast GUID, ISBN, etc.)
 - When there is no parent, the comment is a direct reply to the root
