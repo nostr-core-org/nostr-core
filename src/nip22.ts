@@ -30,7 +30,11 @@ export function createCommentEventTemplate(content: string, scope: CommentScope)
     tags.push(['I', scope.rootId])
   }
 
-  if (scope.rootPubkey) tags.push(['p', scope.rootPubkey])
+  // NIP-22: uppercase tags refer to the root scope, lowercase to the
+  // immediate parent. The separate root pubkey tag must therefore be 'P',
+  // not 'p' — otherwise the root and parent author tags collide on
+  // top-level comments where parentPubkey is also set later.
+  if (scope.rootPubkey) tags.push(['P', scope.rootPubkey])
 
   // Parent tag (if replying to a comment)
   if (scope.parentId) {
@@ -92,6 +96,9 @@ export function parseComment(event: NostrEvent): CommentScope & { content: strin
       case 'K':
         result.rootKind = parseInt(tag[1], 10)
         break
+      case 'P':
+        result.rootPubkey = tag[1]
+        break
       case 'e':
         result.parentType = 'event'
         result.parentId = tag[1]
@@ -107,6 +114,9 @@ export function parseComment(event: NostrEvent): CommentScope & { content: strin
         break
       case 'k':
         result.parentKind = parseInt(tag[1], 10)
+        break
+      case 'p':
+        result.parentPubkey = tag[1]
         break
     }
   }
