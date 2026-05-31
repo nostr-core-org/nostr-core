@@ -1,5 +1,5 @@
-import { bytesToHex } from '@noble/hashes/utils'
-import { schnorr } from '@noble/curves/secp256k1'
+import { bytesToHex } from '@noble/hashes/utils.js'
+import { schnorr } from '@noble/curves/secp256k1.js'
 
 import { finalizeEvent, type EventTemplate, type VerifiedEvent } from './event.js'
 import * as nip04 from './nip04.js'

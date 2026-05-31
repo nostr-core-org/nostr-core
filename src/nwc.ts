@@ -1,4 +1,4 @@
-import { bytesToHex, hexToBytes } from '@noble/hashes/utils'
+import { bytesToHex, hexToBytes } from '@noble/hashes/utils.js'
 
 import { getPublicKey } from './crypto.js'
 import { finalizeEvent, type NostrEvent, type EventTemplate } from './event.js'

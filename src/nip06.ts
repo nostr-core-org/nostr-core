@@ -1,8 +1,8 @@
 import { HDKey } from '@scure/bip32'
 import { generateMnemonic as genMnemonic, mnemonicToSeedSync, validateMnemonic as valMnemonic } from '@scure/bip39'
 import { wordlist as english } from '@scure/bip39/wordlists/english.js'
-import { bytesToHex } from '@noble/hashes/utils'
-import { schnorr } from '@noble/curves/secp256k1'
+import { bytesToHex } from '@noble/hashes/utils.js'
+import { schnorr } from '@noble/curves/secp256k1.js'
 
 export type DerivedKey = {
   secretKey: Uint8Array

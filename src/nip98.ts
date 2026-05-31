@@ -1,5 +1,5 @@
-import { sha256 } from '@noble/hashes/sha2'
-import { bytesToHex } from '@noble/hashes/utils'
+import { sha256 } from '@noble/hashes/sha2.js'
+import { bytesToHex } from '@noble/hashes/utils.js'
 import { base64 } from '@scure/base'
 
 import { finalizeEvent, verifyEvent, type NostrEvent, type EventTemplate } from './event.js'
