@@ -1,0 +1,187 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="630">
+      <stop offset="0%" stop-color="#0d1117"/>
+      <stop offset="50%" stop-color="#0f1319"/>
+      <stop offset="100%" stop-color="#161b22"/>
+    </linearGradient>
+    <radialGradient id="centerGlow" cx="880" cy="315" r="260" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#f97316" stop-opacity="0.10"/>
+      <stop offset="40%" stop-color="#897FFF" stop-opacity="0.06"/>
+      <stop offset="100%" stop-color="#0d1117" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="nodeGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f97316"/>
+      <stop offset="100%" stop-color="#FFCA4A"/>
+    </linearGradient>
+    <linearGradient id="purpleGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#897FFF"/>
+      <stop offset="100%" stop-color="#a78bfa"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="softGlow">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="bigGlow">
+      <feGaussianBlur stdDeviation="25" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <style>
+    text { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; }
+  </style>
+
+  <!-- Background -->
+  <rect width="1200" height="630" rx="10" fill="url(#bg)" stroke="#30363d" stroke-width="1"/>
+
+  <!-- Ambient glow -->
+  <ellipse cx="880" cy="315" rx="320" ry="280" fill="url(#centerGlow)"/>
+
+  <!-- Terminal chrome -->
+  <rect width="1200" height="38" rx="10" fill="#161b22"/>
+  <rect y="28" width="1200" height="10" fill="#161b22"/>
+  <circle cx="20" cy="19" r="6" fill="#ff5f56"/>
+  <circle cx="40" cy="19" r="6" fill="#ffbd2e"/>
+  <circle cx="60" cy="19" r="6" fill="#27c93f"/>
+
+  <!-- Faint constellation grid -->
+  <line x1="640" y1="80" x2="640" y2="580" stroke="#1c2128" stroke-width="0.5"/>
+  <line x1="800" y1="80" x2="800" y2="580" stroke="#1c2128" stroke-width="0.5"/>
+  <line x1="960" y1="80" x2="960" y2="580" stroke="#1c2128" stroke-width="0.5"/>
+  <line x1="1120" y1="80" x2="1120" y2="580" stroke="#1c2128" stroke-width="0.5"/>
+  <line x1="640" y1="170" x2="1160" y2="170" stroke="#1c2128" stroke-width="0.5"/>
+  <line x1="640" y1="315" x2="1160" y2="315" stroke="#1c2128" stroke-width="0.5"/>
+  <line x1="640" y1="460" x2="1160" y2="460" stroke="#1c2128" stroke-width="0.5"/>
+
+  <!-- Title (left side) -->
+  <text x="60" y="110" font-size="14" fill="#f97316" font-weight="bold">12</text>
+  <text x="60" y="175" font-size="40" fill="#c9d1d9" font-weight="bold">Teaching</text>
+  <text x="60" y="225" font-size="40" fill="#c9d1d9" font-weight="bold">Agents</text>
+  <text x="60" y="275" font-size="40" fill="#f97316" font-weight="bold">to Build</text>
+  <text x="60" y="340" font-size="16" fill="#8b949e">10 skills. One protocol.</text>
+  <text x="60" y="365" font-size="16" fill="#8b949e">From identity to payments</text>
+  <text x="60" y="390" font-size="16" fill="#8b949e">to social -- all guided.</text>
+
+  <!-- Skill count badges -->
+  <rect x="60" y="430" width="90" height="28" rx="6" fill="#0d1117" stroke="#f97316" stroke-width="1"/>
+  <text x="105" y="449" text-anchor="middle" font-size="11" fill="#f97316" font-weight="bold">10 Skills</text>
+
+  <rect x="160" y="430" width="90" height="28" rx="6" fill="#0d1117" stroke="#FFCA4A" stroke-width="1"/>
+  <text x="205" y="449" text-anchor="middle" font-size="11" fill="#FFCA4A" font-weight="bold">48 NIPs</text>
+
+  <rect x="260" y="430" width="90" height="28" rx="6" fill="#0d1117" stroke="#897FFF" stroke-width="1"/>
+  <text x="305" y="449" text-anchor="middle" font-size="11" fill="#897FFF" font-weight="bold">0 to Agent</text>
+
+  <!-- === CONSTELLATION DIAGRAM (right side) === -->
+
+  <!-- Connection lines (drawn first, behind nodes) -->
+  <!-- Hub to all skills -->
+  <g stroke="#21262d" stroke-width="1.5">
+    <!-- navigate-nostr -->
+    <line x1="880" y1="315" x2="880" y2="130"/>
+    <!-- nostr-identity -->
+    <line x1="880" y1="315" x2="720" y2="190"/>
+    <!-- nostr-messaging -->
+    <line x1="880" y1="315" x2="1050" y2="190"/>
+    <!-- nostr-social -->
+    <line x1="880" y1="315" x2="1080" y2="315"/>
+    <!-- lightning-agent -->
+    <line x1="880" y1="315" x2="680" y2="315"/>
+    <!-- lnbits-mcp -->
+    <line x1="880" y1="315" x2="720" y2="440"/>
+    <!-- lightning-pay -->
+    <line x1="880" y1="315" x2="1050" y2="440"/>
+    <!-- wallet-monitor -->
+    <line x1="880" y1="315" x2="960" y2="500"/>
+    <!-- nwc-integrate -->
+    <line x1="880" y1="315" x2="800" y2="500"/>
+    <!-- nostr-primitives -->
+    <line x1="880" y1="315" x2="880" y2="510"/>
+  </g>
+
+  <!-- Glowing connection lines (accent, selective) -->
+  <g stroke="#f97316" stroke-width="1" stroke-opacity="0.3" filter="url(#softGlow)">
+    <line x1="880" y1="315" x2="880" y2="130"/>
+    <line x1="880" y1="315" x2="680" y2="315"/>
+    <line x1="880" y1="315" x2="1050" y2="440"/>
+  </g>
+
+  <!-- === NODES === -->
+
+  <!-- Center hub: nostr-core -->
+  <circle cx="880" cy="315" r="36" fill="#0d1117" stroke="url(#nodeGrad)" stroke-width="2.5" filter="url(#glow)"/>
+  <circle cx="880" cy="315" r="28" fill="#0d1117" stroke="#f97316" stroke-width="1" stroke-opacity="0.4"/>
+  <text x="880" y="312" text-anchor="middle" font-size="10" fill="#f97316" font-weight="bold">nostr</text>
+  <text x="880" y="325" text-anchor="middle" font-size="10" fill="#f97316" font-weight="bold">-core</text>
+
+  <!-- navigate-nostr (top center) -->
+  <circle cx="880" cy="130" r="20" fill="#0d1117" stroke="#f97316" stroke-width="1.5"/>
+  <text x="880" y="134" text-anchor="middle" font-size="8" fill="#f97316">navigate</text>
+  <text x="880" y="105" text-anchor="middle" font-size="9" fill="#484f58">compass</text>
+
+  <!-- nostr-identity (top left) -->
+  <circle cx="720" cy="190" r="20" fill="#0d1117" stroke="#FFCA4A" stroke-width="1.5"/>
+  <text x="720" y="194" text-anchor="middle" font-size="8" fill="#FFCA4A">identity</text>
+  <text x="720" y="168" text-anchor="middle" font-size="9" fill="#484f58">keys</text>
+
+  <!-- nostr-messaging (top right) -->
+  <circle cx="1050" cy="190" r="20" fill="#0d1117" stroke="#897FFF" stroke-width="1.5"/>
+  <text x="1050" y="194" text-anchor="middle" font-size="8" fill="#897FFF">messaging</text>
+  <text x="1050" y="168" text-anchor="middle" font-size="9" fill="#484f58">DMs</text>
+
+  <!-- nostr-social (right) -->
+  <circle cx="1080" cy="315" r="20" fill="#0d1117" stroke="#897FFF" stroke-width="1.5"/>
+  <text x="1080" y="319" text-anchor="middle" font-size="8" fill="#897FFF">social</text>
+  <text x="1120" y="300" text-anchor="middle" font-size="9" fill="#484f58">threads</text>
+
+  <!-- lightning-agent (left) -->
+  <circle cx="680" cy="315" r="20" fill="#0d1117" stroke="#f97316" stroke-width="1.5" filter="url(#glow)"/>
+  <text x="680" y="319" text-anchor="middle" font-size="8" fill="#f97316">agent</text>
+  <text x="645" y="300" text-anchor="middle" font-size="9" fill="#484f58">scaffold</text>
+
+  <!-- lnbits-mcp (bottom left) -->
+  <circle cx="720" cy="440" r="20" fill="#0d1117" stroke="#FFCA4A" stroke-width="1.5"/>
+  <text x="720" y="444" text-anchor="middle" font-size="8" fill="#FFCA4A">lnbits</text>
+  <text x="720" y="468" text-anchor="middle" font-size="9" fill="#484f58">MCP</text>
+
+  <!-- lightning-pay (bottom right) -->
+  <circle cx="1050" cy="440" r="20" fill="#0d1117" stroke="#f97316" stroke-width="1.5"/>
+  <text x="1050" y="444" text-anchor="middle" font-size="8" fill="#f97316">pay</text>
+  <text x="1050" y="468" text-anchor="middle" font-size="9" fill="#484f58">invoices</text>
+
+  <!-- wallet-monitor (bottom) -->
+  <circle cx="960" cy="500" r="16" fill="#0d1117" stroke="#27c93f" stroke-width="1"/>
+  <text x="960" y="504" text-anchor="middle" font-size="7" fill="#27c93f">monitor</text>
+
+  <!-- nwc-integrate (bottom) -->
+  <circle cx="800" cy="500" r="16" fill="#0d1117" stroke="#27c93f" stroke-width="1"/>
+  <text x="800" y="504" text-anchor="middle" font-size="7" fill="#27c93f">nwc</text>
+
+  <!-- nostr-primitives (bottom center) -->
+  <circle cx="880" cy="510" r="16" fill="#0d1117" stroke="#30363d" stroke-width="1"/>
+  <text x="880" y="514" text-anchor="middle" font-size="7" fill="#484f58">primitives</text>
+  <text x="880" y="534" text-anchor="middle" font-size="9" fill="#30363d">48 NIPs</text>
+
+  <!-- Floating particles (stars) -->
+  <circle cx="650" cy="140" r="1.5" fill="#f97316" opacity="0.4"/>
+  <circle cx="1130" cy="120" r="1" fill="#897FFF" opacity="0.3"/>
+  <circle cx="1140" cy="260" r="1.5" fill="#FFCA4A" opacity="0.3"/>
+  <circle cx="660" cy="480" r="1" fill="#27c93f" opacity="0.4"/>
+  <circle cx="1100" cy="520" r="1" fill="#f97316" opacity="0.3"/>
+  <circle cx="750" cy="100" r="1" fill="#897FFF" opacity="0.2"/>
+  <circle cx="1000" cy="100" r="1.5" fill="#FFCA4A" opacity="0.2"/>
+  <circle cx="650" cy="400" r="1" fill="#f97316" opacity="0.3"/>
+
+  <!-- Watermark -->
+  <text x="1160" y="595" text-anchor="end" font-size="11" fill="#30363d">nostr-core</text>
+
+  <!-- Bottom accent bar (gradient across all brand colors) -->
+  <rect y="626" width="300" height="4" rx="0" fill="#f97316"/>
+  <rect x="300" y="626" width="300" height="4" rx="0" fill="#FFCA4A"/>
+  <rect x="600" y="626" width="300" height="4" rx="0" fill="#897FFF"/>
+  <rect x="900" y="626" width="300" height="4" rx="0" fill="#27c93f"/>
+</svg>

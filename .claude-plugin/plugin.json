@@ -1,6 +1,6 @@
 {
   "name": "nostr-core",
-  "description": "Claude Code skills for building Lightning-enabled Nostr applications with nostr-core. Covers NWC wallet integration, Lightning payments, real-time wallet monitoring, comprehensive Nostr protocol primitives (39 NIPs), and signing via secret keys, browser extensions (NIP-07), and remote signers (NIP-46).",
+  "description": "Claude Code skills for building Lightning-enabled Nostr applications with nostr-core. 10 skills covering ecosystem navigation, identity management, encrypted messaging, social features, agent scaffolding, LNbits + MCP integration, NWC wallet integration, Lightning payments, real-time wallet monitoring, and comprehensive Nostr protocol primitives (48 NIPs).",
   "version": "0.5.0",
   "author": {
     "name": "nostr-core-org",
@@ -98,6 +98,14 @@
     "lud-21",
     "pay-request",
     "withdraw-request",
-    "success-action"
+    "success-action",
+    "lnbits",
+    "mcp-server",
+    "navigate-nostr",
+    "nostr-identity",
+    "nostr-messaging",
+    "nostr-social",
+    "lightning-agent",
+    "lnbits-mcp"
   ]
 }

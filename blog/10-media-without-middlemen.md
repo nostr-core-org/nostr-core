@@ -100,4 +100,4 @@ Build the thing you actually want to build. nostr-core handles the protocol.
 
 **Content-addressed media. Nostr-authenticated. No middlemen.**
 
-**[GitHub](https://github.com/nostr-core-org/nostr-core)**
+**[GitHub](https://github.com/nostr-core-org/nostr-core)** 

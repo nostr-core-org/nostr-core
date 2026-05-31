@@ -80,6 +80,20 @@ title: Blogs
   link="/blog/10-media-without-middlemen"
 />
 
+<BlogCard
+  title="Navigate Nostr"
+  description="Agents don't need more protocol knowledge. They need to know where to look. One skill to find every NIP, LUD, NUT, and BUD."
+  image="/headers/blog-11-navigate-nostr.svg"
+  link="/blog/11-navigate-nostr"
+/>
+
+<BlogCard
+  title="Teaching Agents to Build"
+  description="AI agents are only as good as the instructions they get. We wrote ten. From identity to payments to social -- all guided."
+  image="/headers/blog-12-teaching-agents.svg"
+  link="/blog/12-teaching-agents-to-build"
+/>
+
 </div>
 
 <style>
