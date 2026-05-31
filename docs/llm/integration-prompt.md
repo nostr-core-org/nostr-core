@@ -282,7 +282,18 @@ All signers: signer.getPublicKey(), signer.signEvent(template), signer.nip04?.en
     const authEvent = nip98.createHttpAuthEvent({ url, method, body? }, sk)
     const header = nip98.getAuthorizationHeader(authEvent) // "Nostr <base64>"
 
-37. LNURL PROTOCOL (LUD-01/03/06/09/10/12/17/18/20/21)
+37. PICTURE-FIRST FEEDS (NIP-68)
+    import { nip68 } from 'nostr-core'
+    nip68.createPictureEvent({ title, description?, images: [{ url, mimeType, alt?, hash?, dim?, fallback?, annotations? }], hashtags?, taggedUsers?, location?, geohash?, language? }, sk) // kind 20
+    nip68.parsePicturePost(event) // PicturePost { title, description, images[], ... }
+    nip68.buildImetaTag(image) / nip68.parseImetaTag(tag) // imeta tag helpers
+
+38. P2P ORDERS (NIP-69)
+    import { nip69 } from 'nostr-core'
+    nip69.createOrderEvent({ id, type: 'buy'|'sell', fiatCurrency, status, amount, fiatAmount, paymentMethods, premium, network, layer, platform, expiresAt?, expiration?, source?, rating?, name?, geohash?, bond? }, sk) // kind 38383 (addressable)
+    nip69.parseOrder(event) // P2POrder (fiatAmount is number or [min, max])
+
+39. LNURL PROTOCOL (LUD-01/03/06/09/10/12/17/18/20/21)
     import { lnurl } from 'nostr-core'
     const encoded = lnurl.encodeLnurl('https://service.com/api?q=pay') // 'LNURL1...'
     const decoded = lnurl.decodeLnurl('LNURL1...') // 'https://service.com/api?q=pay'

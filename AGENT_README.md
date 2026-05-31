@@ -1215,6 +1215,72 @@ const goalTag = nip75.buildGoalTag(goalEvent.id, 'wss://relay.damus.io')
 
 ---
 
+## Picture-First Feeds (NIP-68)
+
+Create and parse kind 20 picture posts for visual, Instagram-style feeds. Each image is described by an `imeta` tag.
+
+```typescript
+import { nip68 } from 'nostr-core'
+
+// Create a picture post (kind 20)
+const post = nip68.createPictureEvent({
+  title: 'Costa Rica',
+  description: 'Sunset over the coast',
+  images: [
+    {
+      url: 'https://nostr.build/i/photo.jpg',
+      mimeType: 'image/jpeg',
+      alt: 'Coastline at sunset',
+      hash: '<sha256>',
+      dim: '3024x4032',
+      fallback: ['https://void.cat/photo.jpg'],
+      annotations: [{ pubkey: friendPk, x: 1200, y: 800 }],
+    },
+  ],
+  hashtags: ['travel', 'photography'],
+  language: 'en',
+}, secretKey)
+
+const parsed = nip68.parsePicturePost(post) // { title, description, images[], hashtags, ... }
+
+// Low-level imeta helpers (also useful for NIP-92 / kind 22 video feeds)
+const tag = nip68.buildImetaTag({ url: 'https://x.jpg', mimeType: 'image/jpeg' })
+const image = nip68.parseImetaTag(tag) // ImageMetadata | null
+```
+
+---
+
+## P2P Orders (NIP-69)
+
+Create and parse kind 38383 peer-to-peer order events for Bitcoin marketplaces (e.g. lnp2pbot, Mostro). Addressable events keyed by the `d` identifier.
+
+```typescript
+import { nip69 } from 'nostr-core'
+
+// Advertise a sell order (kind 38383)
+const order = nip69.createOrderEvent({
+  id: 'order-2024-0042',
+  type: 'sell',
+  fiatCurrency: 'USD',
+  status: 'pending',
+  amount: 0,               // 0 = price from a public API
+  fiatAmount: [20, 200],   // range order; or a single number
+  paymentMethods: ['SEPA', 'Revolut'],
+  premium: 2,
+  network: 'mainnet',
+  layer: 'lightning',
+  platform: 'mostro',
+  rating: { total_reviews: 12, total_rating: 4.8 },
+  bond: 5000,
+  expiresAt: Math.floor(Date.now() / 1000) + 86400,
+  expiration: Math.floor(Date.now() / 1000) + 86400 * 7,
+}, secretKey)
+
+const parsed = nip69.parseOrder(orderEvent) // P2POrder (fiatAmount is number or [min, max])
+```
+
+---
+
 ## Links
 
 - **npm:** https://www.npmjs.com/package/nostr-core
@@ -1226,6 +1292,8 @@ const goalTag = nip75.buildGoalTag(goalEvent.id, 'wss://relay.damus.io')
 - **NIP-58 Spec:** https://github.com/nostr-protocol/nips/blob/master/58.md
 - **NIP-59 Spec:** https://github.com/nostr-protocol/nips/blob/master/59.md
 - **NIP-65 Spec:** https://github.com/nostr-protocol/nips/blob/master/65.md
+- **NIP-68 Spec:** https://github.com/nostr-protocol/nips/blob/master/68.md
+- **NIP-69 Spec:** https://github.com/nostr-protocol/nips/blob/master/69.md
 - **NIP-75 Spec:** https://github.com/nostr-protocol/nips/blob/master/75.md
 - **NIP-17 Spec:** https://github.com/nostr-protocol/nips/blob/master/17.md
 - **License:** MIT
