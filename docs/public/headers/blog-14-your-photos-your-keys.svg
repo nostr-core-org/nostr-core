@@ -1,0 +1,142 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="630">
+      <stop offset="0%" stop-color="#0d1117"/>
+      <stop offset="50%" stop-color="#0f1319"/>
+      <stop offset="100%" stop-color="#161b22"/>
+    </linearGradient>
+    <linearGradient id="ring" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f97316"/>
+      <stop offset="50%" stop-color="#FFCA4A"/>
+      <stop offset="100%" stop-color="#897FFF"/>
+    </linearGradient>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f97316"/>
+      <stop offset="55%" stop-color="#FFCA4A"/>
+      <stop offset="100%" stop-color="#ffe39b"/>
+    </linearGradient>
+    <linearGradient id="sea" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1b2a4a"/>
+      <stop offset="100%" stop-color="#0e1730"/>
+    </linearGradient>
+    <radialGradient id="sun" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#fff6dc"/>
+      <stop offset="55%" stop-color="#ffd34a"/>
+      <stop offset="100%" stop-color="#f97316"/>
+    </radialGradient>
+    <radialGradient id="emblemGlow" cx="885" cy="305" r="250" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#f97316" stop-opacity="0.16"/>
+      <stop offset="60%" stop-color="#897FFF" stop-opacity="0.05"/>
+      <stop offset="100%" stop-color="#0d1117" stop-opacity="0"/>
+    </radialGradient>
+    <clipPath id="photoClip">
+      <rect x="-150" y="-175" width="300" height="300" rx="14"/>
+    </clipPath>
+    <filter id="softGlow">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="cardShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="10" stdDeviation="18" flood-color="#000000" flood-opacity="0.45"/>
+    </filter>
+  </defs>
+  <style>
+    text { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; }
+  </style>
+
+  <!-- Background -->
+  <rect width="1200" height="630" rx="10" fill="url(#bg)" stroke="#30363d" stroke-width="1"/>
+
+  <!-- Ambient glow -->
+  <ellipse cx="885" cy="305" rx="340" ry="300" fill="url(#emblemGlow)"/>
+
+  <!-- Terminal chrome -->
+  <rect width="1200" height="38" rx="10" fill="#161b22"/>
+  <rect y="28" width="1200" height="10" fill="#161b22"/>
+  <circle cx="20" cy="19" r="6" fill="#ff5f56"/>
+  <circle cx="40" cy="19" r="6" fill="#ffbd2e"/>
+  <circle cx="60" cy="19" r="6" fill="#27c93f"/>
+
+  <!-- Faint grid lines -->
+  <line x1="620" y1="80" x2="620" y2="560" stroke="#1c2128" stroke-width="1"/>
+  <line x1="780" y1="80" x2="780" y2="560" stroke="#1c2128" stroke-width="1"/>
+  <line x1="940" y1="80" x2="940" y2="560" stroke="#1c2128" stroke-width="1"/>
+  <line x1="1100" y1="80" x2="1100" y2="560" stroke="#1c2128" stroke-width="1"/>
+  <line x1="620" y1="160" x2="1160" y2="160" stroke="#1c2128" stroke-width="1"/>
+  <line x1="620" y1="315" x2="1160" y2="315" stroke="#1c2128" stroke-width="1"/>
+  <line x1="620" y1="470" x2="1160" y2="470" stroke="#1c2128" stroke-width="1"/>
+
+  <!-- Title (left side) -->
+  <text x="60" y="110" font-size="14" fill="#f97316" font-weight="bold">14</text>
+  <text x="60" y="172" font-size="40" fill="#c9d1d9" font-weight="bold">Your photos,</text>
+  <text x="60" y="222" font-size="40" fill="#f97316" font-weight="bold">your keys</text>
+  <text x="60" y="292" font-size="16" fill="#8b949e">Picture-first feeds on Nostr.</text>
+  <text x="60" y="317" font-size="16" fill="#8b949e">Tag friends. Drop a geohash.</text>
+  <text x="60" y="342" font-size="16" fill="#8b949e">No platform in the middle.</text>
+
+  <!-- Spec badges -->
+  <rect x="60" y="386" width="84" height="28" rx="6" fill="#0d1117" stroke="#f97316" stroke-width="1"/>
+  <text x="102" y="405" text-anchor="middle" font-size="11" fill="#f97316" font-weight="bold">kind 20</text>
+
+  <rect x="154" y="386" width="70" height="28" rx="6" fill="#0d1117" stroke="#FFCA4A" stroke-width="1"/>
+  <text x="189" y="405" text-anchor="middle" font-size="11" fill="#FFCA4A" font-weight="bold">imeta</text>
+
+  <rect x="234" y="386" width="80" height="28" rx="6" fill="#0d1117" stroke="#897FFF" stroke-width="1"/>
+  <text x="274" y="405" text-anchor="middle" font-size="11" fill="#897FFF" font-weight="bold">NIP-68</text>
+
+  <!-- Import hint -->
+  <text x="60" y="462" font-size="12" fill="#484f58">import { nip68 } from 'nostr-core'</text>
+
+  <!-- === PHOTO STACK (right side) === -->
+  <!-- Back card, slightly rotated, hints multi-photo post -->
+  <g transform="translate(885, 300) rotate(7)" opacity="0.55">
+    <rect x="-150" y="-175" width="300" height="300" rx="14" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+  </g>
+
+  <!-- Front photo card -->
+  <g transform="translate(885, 300) rotate(-5)" filter="url(#cardShadow)">
+    <rect x="-150" y="-175" width="300" height="300" rx="14" fill="#0d1117" stroke="#3a4250" stroke-width="1.5"/>
+
+    <!-- Scene, clipped to the card -->
+    <g clip-path="url(#photoClip)">
+      <rect x="-150" y="-175" width="300" height="190" fill="url(#sky)"/>
+      <circle cx="40" cy="-40" r="46" fill="url(#sun)"/>
+      <rect x="-150" y="15" width="300" height="110" fill="url(#sea)"/>
+      <!-- horizon shimmer -->
+      <rect x="-150" y="15" width="300" height="4" fill="#ffd34a" opacity="0.55"/>
+      <ellipse cx="40" cy="60" rx="20" ry="42" fill="#ffd34a" opacity="0.18"/>
+      <line x1="-150" y1="40" x2="150" y2="40" stroke="#ffffff" stroke-width="1" stroke-opacity="0.08"/>
+      <line x1="-150" y1="70" x2="150" y2="70" stroke="#ffffff" stroke-width="1" stroke-opacity="0.06"/>
+    </g>
+
+    <!-- Friend annotation: pubkey pinned to pixel coordinates -->
+    <g filter="url(#softGlow)">
+      <circle cx="-58" cy="-58" r="12" fill="none" stroke="#ffffff" stroke-width="2.5"/>
+      <circle cx="-58" cy="-58" r="3" fill="#ffffff"/>
+    </g>
+    <g transform="translate(-58, -90)">
+      <rect x="-46" y="-15" width="92" height="24" rx="12" fill="#0d1117" stroke="#f97316" stroke-width="1"/>
+      <text x="0" y="1" text-anchor="middle" font-size="11" fill="#f97316" font-weight="bold">@friend</text>
+    </g>
+
+    <!-- Caption / metadata strip -->
+    <text x="-134" y="48" font-size="13" fill="#c9d1d9" font-weight="bold">Costa Rica</text>
+    <g font-size="9" fill="#8b949e">
+      <rect x="-135" y="62" width="58" height="18" rx="4" fill="#161b22" stroke="#30363d" stroke-width="0.75"/>
+      <text x="-106" y="74" text-anchor="middle">blurhash</text>
+      <rect x="-72" y="62" width="58" height="18" rx="4" fill="#161b22" stroke="#30363d" stroke-width="0.75"/>
+      <text x="-43" y="74" text-anchor="middle">sha256</text>
+      <rect x="-9" y="62" width="58" height="18" rx="4" fill="#161b22" stroke="#30363d" stroke-width="0.75"/>
+      <text x="20" y="74" text-anchor="middle">geohash</text>
+    </g>
+    <text x="-134" y="104" font-size="9" fill="#484f58">imeta . 3024x4032 . image/jpeg</text>
+  </g>
+
+  <!-- Watermark -->
+  <text x="1160" y="595" text-anchor="end" font-size="11" fill="#30363d">nostr-core</text>
+
+  <!-- Bottom accent bar -->
+  <rect y="626" width="400" height="4" fill="#f97316"/>
+  <rect x="400" y="626" width="400" height="4" fill="#FFCA4A"/>
+  <rect x="800" y="626" width="400" height="4" fill="#897FFF"/>
+</svg>

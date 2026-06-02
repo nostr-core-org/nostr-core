@@ -94,6 +94,20 @@ title: Blogs
   link="/blog/12-teaching-agents-to-build"
 />
 
+<BlogCard
+  title="Every Blog You've Written, Now on Nostr"
+  description="Point it at a feed. Get signed long-form events back. WordPress, Substack, Ghost, Medium, all of it."
+  image="/headers/blog-13-every-blog-on-nostr.svg"
+  link="/blog/13-every-blog-on-nostr"
+/>
+
+<BlogCard
+  title="Your Photos, Your Keys"
+  description="Picture-first feeds come to Nostr. Kind 20, full metadata, friends tagged in the event itself, no platform in the middle."
+  image="/headers/blog-14-your-photos-your-keys.svg"
+  link="/blog/14-your-photos-your-keys"
+/>
+
 </div>
 
 <style>
