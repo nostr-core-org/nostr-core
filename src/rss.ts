@@ -59,6 +59,10 @@ const xmlParser = new XMLParser({
   trimValues: true,
   cdataPropName: '#cdata',
   htmlEntities: true,
+  // Feeds often embed deeply nested (and sometimes unclosed) HTML in
+  // <description>/<content:encoded> without CDATA. The default cap of 100
+  // throws "Maximum nested tags exceeded" on such input, so raise it.
+  maxNestedTags: 10000,
   isArray: (name) =>
     ['item', 'entry', 'category', 'author'].includes(name),
 })
