@@ -59,9 +59,19 @@ const xmlParser = new XMLParser({
   trimValues: true,
   cdataPropName: '#cdata',
   htmlEntities: true,
-  // Feeds often embed deeply nested (and sometimes unclosed) HTML in
-  // <description>/<content:encoded> without CDATA. The default cap of 100
-  // throws "Maximum nested tags exceeded" on such input, so raise it.
+  // Real-world feeds embed large escaped HTML blobs in <content:encoded> /
+  // <description>. fast-xml-parser (4.5.x) counts every entity token
+  // (&lt; &gt; &amp; …) cumulatively across the whole document and aborts
+  // past processEntities.maxTotalExpansions (default 1000) — a 400 KB feed
+  // trips this inside the first <item>, surfacing as
+  // "Entity expansion limit exceeded". These are 1:1 predefined entities
+  // (not recursive expansion bombs), so raising the cap is safe.
+  processEntities: {
+    enabled: true,
+    maxTotalExpansions: 1_000_000,
+  },
+  // Same feeds also nest HTML deeper than the default cap of 100, which
+  // throws "Maximum nested tags exceeded". Raise that too.
   maxNestedTags: 10000,
   isArray: (name) =>
     ['item', 'entry', 'category', 'author'].includes(name),
