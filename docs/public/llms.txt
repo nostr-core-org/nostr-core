@@ -54,7 +54,7 @@ nostr-core lets agents and applications pay invoices, check balances, create inv
 - [NIP-40](api/nip40.md): Expiration timestamp (addExpiration, getExpiration, isExpired)
 - [NIP-42](api/nip42.md): Client authentication to relays (createAuthEvent, verifyAuthEvent, relay.auth)
 - [NIP-44](api/nip44.md): ChaCha20 authenticated encryption (recommended)
-- [NIP-46](api/nip46.md): Remote signing via Nostr Connect (NostrConnect class) - bunker:// URIs, multi-relay fallback, NIP-44 encryption, app metadata
+- [NIP-46](api/nip46.md): Remote signing via Nostr Connect (NostrConnect class) - bunker:// URIs, multi-relay fallback, NIP-44 transport with NIP-04 fallback for legacy bunkers, app metadata
 - [NIP-48](api/nip48.md): Proxy tags for bridged events (addProxyTag, getProxyTags, isProxied)
 - [NIP-50](api/nip50.md): Search (buildSearchFilter, parseSearchQuery, buildSearchQuery)
 - [NIP-51](api/nip51.md): Lists with encrypted private items (createListEvent, parseList)
@@ -64,8 +64,11 @@ nostr-core lets agents and applications pay invoices, check balances, create inv
 - [NIP-58](api/nip58.md): Badges (createBadgeDefinitionEvent, createBadgeAwardEvent, parseBadgeDefinition, createBadgeRequestEvent, createBadgeDenialEvent, resolveBadgeRequestState)
 - [NIP-59](api/nip59.md): Gift Wrap - multi-layer event encryption for metadata protection (createRumor, createSeal, createWrap, unwrap)
 - [NIP-60](api/nip60.md): Cashu Wallets - eCash wallet storage on Nostr with NIP-44 encrypted tokens (createWalletEvent, createTokenEvent, parseTokenEvent, getProofsBalance)
+- [NIP-61](api/nip61.md): Nutzaps - P2PK-locked Cashu payments where the payment is the receipt (createNutzapInfoEvent, createNutzapEvent, parseNutzap, verifyNutzap, toP2PKLockKey, createNutzapRedemptionEvent, getNutzapFilter)
 - [NIP-65](api/nip65.md): Relay List Metadata - user relay preferences for read/write routing (parseRelayList, createRelayListEvent, getReadRelays, getWriteRelays)
 - [NIP-75](api/nip75.md): Zap Goals (createZapGoalEvent, parseZapGoal, isZapGoalOpen, calculateZapGoalProgress)
+- [NIP-78](api/nip78.md): Arbitrary Custom App Data - relays as a personal database (createAppDataEvent, createEncryptedAppDataJsonEvent, parseEncryptedAppDataJson, getAppDataFilter)
+- [NIP-87](api/nip87.md): Cashu and Fedimint Discoverability (createCashuMintAnnouncement, createFedimintAnnouncement, createMintRecommendation, tallyRecommendations)
 - [NIP-98](api/nip98.md): HTTP Auth (createHttpAuthEvent, getAuthorizationHeader, verifyHttpAuthEvent)
 - [Navigate Nostr Skill](skills/navigate-nostr/SKILL.md): Agent skill for navigating the Nostr ecosystem - find the right NIPs, LNURL LUDs, Cashu NUTs, Blossom BUDs, and map each to its nostr-core module
 - [Nostr Identity Skill](skills/nostr-identity/SKILL.md): Generate and manage Nostr identities - keypairs, mnemonics (NIP-06), NIP-05 verification, signers (NIP-07, NIP-46), profiles
@@ -73,9 +76,13 @@ nostr-core lets agents and applications pay invoices, check balances, create inv
 - [Nostr Social Skill](skills/nostr-social/SKILL.md): Build social features on Nostr - threads, reactions, reposts, articles, follows, badges, calendar events, zaps, moderation
 - [Lightning Agent Skill](skills/lightning-agent/SKILL.md): Copy-paste agent scaffold combining wallet, messaging, identity, and payments into a reusable LightningAgent class
 - [LNbits MCP Skill](skills/lnbits-mcp/SKILL.md): Connect nostr-core to LNbits via NWC and set up the LNbits MCP Server for conversational wallet control
-- LNURL Protocol: encodeLnurl(), decodeLnurl(), isLnurl(), resolveUrl(), fetchPayRequest(), requestInvoice(), fetchWithdrawRequest(), submitWithdrawRequest(), parseLnurlMetadata(), parseSuccessAction(), decryptAesSuccessAction(), verifyPayment() — LUD-01/03/06/09/10/12/17/18/20/21
+- LNURL Protocol: encodeLnurl(), decodeLnurl(), isLnurl(), resolveUrl(), fetchPayRequest(), requestInvoice(), fetchWithdrawRequest(), submitWithdrawRequest(), parseLnurlMetadata(), parseSuccessAction(), decryptAesSuccessAction(), verifyPayment(), validateVerifyUrl() — LUD-01/03/06/09/10/12/17/18/20/21/24 (Bolt Card PIN)
 - BOLT-11 Invoice Decoder: decodeBolt11() — extract amount, payment hash, description, expiry, route hints, payee node key from Lightning invoices
 - Blossom Media (NIP-B7): uploadBlob(), getBlob(), deleteBlob(), listBlobs(), mirrorBlob(), createServerListEvent(), createBlossomAuthEvent() — BUD-01/02/03/04/11 for content-addressable media storage
+- [Schema](api/schema.md): Runtime validation for untrusted Nostr data - nostrEvent, verifiedNostrEvent, filter, relayMessage, clientMessage, json(), arrayOf(), defineValidator (also `nostr-core/schema`)
+- [Policy](api/policy.md): Composable event checks - pipe, noDuplicates, requirePow, blockKeywords, filterPolicy, rateLimit, sizeLimit, requireValidSignature, notExpired (also `nostr-core/policy`)
+- [Mail over Nostr](api/mail.md): EXPERIMENTAL - email-shaped gift-wrapped messaging with structured To/Cc/Bcc, threading and encrypted Blossom attachments (createMailMessage, parseMailMessage, createReply)
+- [Appointment Scheduling](api/scheduling.md): EXPERIMENTAL - availability pages, DST-correct slot generation and gift-wrapped bookings built on NIP-52 (createAvailabilityEvent, generateSlots, createBookingRequest)
 - [Utils](api/utils.md): normalizeURL, bytesToHex, hexToBytes, randomBytes
 
 ## Agent Integration

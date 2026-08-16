@@ -8,6 +8,7 @@ Functions for creating, signing, and verifying Nostr events.
 import {
   finalizeEvent,
   verifyEvent,
+  verifyEventSignature,
   getEventHash,
   serializeEvent,
   validateEvent,
@@ -96,11 +97,42 @@ function verifyEvent(event: NostrEvent): event is VerifiedEvent
 
 Verifies an event's hash and schnorr signature. Acts as a TypeScript type guard.
 
+The result is **cached** on the event under `verifiedSymbol`, so repeated checks
+of the same object are free.
+
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `event` | `NostrEvent` | Event to verify |
 
 **Returns:** `boolean` - `true` if valid, narrowing the type to `VerifiedEvent`.
+
+## verifyEventSignature
+
+```ts
+function verifyEventSignature(event: NostrEvent): boolean
+```
+
+Verifies an event's id and signature **from scratch**, consulting no cache and
+writing none.
+
+::: warning
+`verifiedSymbol` is an own enumerable symbol property, and object spread copies
+own symbols. That means `{ ...signedEvent, content: 'changed' }` inherits the
+original event's "already verified" flag, and `verifyEvent` would return `true`
+for it.
+
+Events parsed from JSON are unaffected - JSON has no symbols - so data arriving
+off the wire is never at risk. But any code path that spreads a signed event and
+mutates it should use `verifyEventSignature`. The [Schema](/api/schema) and
+[Policy](/api/policy) modules use it for exactly this reason.
+:::
+
+```ts
+const tampered = { ...signed, content: 'changed' }
+
+verifyEvent(tampered)             // true  - reads the copied cache flag
+verifyEventSignature(tampered)    // false - actually checks
+```
 
 Results are cached on the event object via `[verifiedSymbol]`.
 

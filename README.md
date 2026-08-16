@@ -1,10 +1,10 @@
 # nostr-core - Dead-simple & vendor-neutral
 
-**nostr-core** is a comprehensive JavaScript/TypeScript toolkit for building engaging [Nostr](https://nostr.com) applications. With support for 36+ NIPs out of the box, it covers everything from core protocol primitives to advanced social, payments, and identity features — giving you a single, well-typed foundation to build on.
+**nostr-core** is a comprehensive JavaScript/TypeScript toolkit for building engaging [Nostr](https://nostr.com) applications. With support for 40+ NIPs out of the box, it covers everything from core protocol primitives to advanced social, payments, and identity features — giving you a single, well-typed foundation to build on.
 
 **Why nostr-core?**
 
-* 📡 Protocol Complete - 36+ NIPs implemented and ready to use, from basics to cutting-edge
+* 📡 Protocol Complete - 40+ NIPs implemented and ready to use, from basics to cutting-edge
 * ⚡ NWC & Lightning - First-class Nostr Wallet Connect support for seamless payment flows
 * 🔐 Identity & Auth - Key management, NIP-07 browser signing, and bunker/remote signer support
 * 🎯 Relay Management - Smart relay abstraction with connection pooling and event routing
@@ -34,7 +34,8 @@ nwc.close()
 
 - **Single connection string** - pass a `nostr+walletconnect://` URI and start making calls
 - **Full NIP-47 coverage** - `pay_invoice`, `get_balance`, `make_invoice`, `list_transactions`, `pay_keysend`, `sign_message`, and more
-- **Auto-encryption** - detects NIP-04 or NIP-44 support and handles it transparently
+- **Auto-encryption** - detects NIP-04 or NIP-44 support and handles it transparently, recovering automatically from wallets that mis-advertise it
+- **Resilient relays** - subscriptions survive a dropped socket: exponential-backoff reconnect and automatic REQ replay
 - **Typed errors** - specific error classes for timeouts, connection failures, wallet rejections, and decryption issues
 - **Signer abstraction** - unified `Signer` interface for secret keys, browser extensions (NIP-07), and remote signers (NIP-46)
 - **Zero framework deps** - built on audited [noble](https://paulmillr.com/noble/) cryptography libraries only
@@ -227,7 +228,7 @@ If you've used `@getalby/sdk` before, here's why `nostr-core` is a better fit fo
 | **Dependency tree** | 132 total | 698 total | **81% fewer** |
 | **Vendor lock-in** | None - pure NIP-47 protocol | Coupled to Alby (OAuth, webhooks, branding) | |
 | **Error handling** | Typed hierarchy (8 specific classes) | Generic errors | |
-| **Encryption** | Auto-detects NIP-04 / NIP-44 | Manual configuration | |
+| **Encryption** | Auto-detects NIP-04 / NIP-44, with fallback when a wallet mis-advertises | Manual configuration | |
 | **Fiat conversion** | Built-in (zero extra deps) | `USD()` via `LN` client (v7+), backed by `@getalby/lightning-tools` | |
 | **Runtime support** | Node 18+, Deno, Bun, Cloudflare Workers | Node.js (requires websocket polyfill pre-v18) | |
 | **API surface** | One class (`NWC`) | `LN` + `NWCClient` + `NWAClient` + `NostrWebLNProvider` + `OAuthWebLNProvider` | |

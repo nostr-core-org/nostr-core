@@ -4,6 +4,7 @@ import { getPublicKey } from './crypto.js'
 import { finalizeEvent, type EventTemplate, type NostrEvent, type VerifiedEvent } from './event.js'
 import type { Filter } from './filter.js'
 import * as nip04 from './nip04.js'
+import * as nip44 from './nip44.js'
 import { Relay } from './relay.js'
 import type { Signer, RelayMap } from './signer.js'
 
@@ -56,11 +57,26 @@ export type Nip46Method =
   | 'nip44_decrypt'
   | 'get_relays'
 
+/** Transport encryption for the NIP-46 RPC channel. */
+export type Nip46Encryption = 'nip44' | 'nip04'
+
+/**
+ * How to pick the RPC transport encryption.
+ *
+ * NIP-46 specifies NIP-44 and current signers (Amber, nsec.app) require it;
+ * NIP-04 is kept only for backwards compatibility with older bunkers.
+ * `'auto'` starts on NIP-44 and falls back to NIP-04 when the remote signer
+ * either answers in NIP-04 or does not answer the NIP-44 handshake at all.
+ */
+export type Nip46EncryptionMode = Nip46Encryption | 'auto'
+
 export type Nip46ConnectionOptions = {
   remotePubkey: string
   relayUrls: string[]
   secretKey?: Uint8Array
   secret?: string
+  /** Default: `'auto'`. */
+  encryption?: Nip46EncryptionMode
 }
 
 export type Nip46AppMetadata = {
@@ -127,8 +143,13 @@ export class NostrConnect implements Signer {
   private _connected = false
   private pendingRequests = new Map<string, PendingRequest>()
   private sub: { close: (reason?: string) => void } | undefined
+  private encryptionMode: Nip46EncryptionMode
+  private encryptionType: Nip46Encryption
+  private conversationKey: Uint8Array | undefined
 
   public timeout = 60000
+  /** Per-attempt timeout for the initial `connect` RPC, in ms. */
+  public handshakeTimeout = 15000
 
   constructor(connectionOrOpts: string | Nip46ConnectionOptions) {
     const opts = typeof connectionOrOpts === 'string'
@@ -140,10 +161,17 @@ export class NostrConnect implements Signer {
     this.secretKey = opts.secretKey || randomBytes(32)
     this.publicKey = getPublicKey(this.secretKey)
     this.secret = opts.secret
+    this.encryptionMode = opts.encryption ?? 'auto'
+    this.encryptionType = this.encryptionMode === 'nip04' ? 'nip04' : 'nip44'
   }
 
   get connected(): boolean {
     return this._connected
+  }
+
+  /** The transport encryption currently in use for RPC payloads. */
+  get encryption(): Nip46Encryption {
+    return this.encryptionType
   }
 
   async connect(): Promise<void> {
@@ -181,11 +209,32 @@ export class NostrConnect implements Signer {
         ? [this.publicKey, this.secret]
         : [this.publicKey]
 
-      try {
-        await this._sendRequest('connect', params)
-      } catch (err) {
+      // In 'auto' mode start on NIP-44 (spec + Amber) and fall back to NIP-04
+      // only if the handshake goes unanswered. A signer that *replies* in
+      // NIP-04 is detected by _handleResponse and pinned without a retry.
+      const attempts: Nip46Encryption[] =
+        this.encryptionMode === 'auto' ? ['nip44', 'nip04'] : [this.encryptionMode]
+
+      let handshakeError: Error | undefined
+      let handshook = false
+
+      for (const scheme of attempts) {
+        this._setEncryption(scheme)
+        try {
+          await this._sendRequest('connect', params, this.handshakeTimeout)
+          handshook = true
+          break
+        } catch (err) {
+          handshakeError = err as Error
+          // Only a silent signer justifies trying the other scheme; a real
+          // remote error means we were understood and should surface it.
+          if (!(err instanceof Nip46TimeoutError)) break
+        }
+      }
+
+      if (!handshook) {
         this.relay.close()
-        lastError = err as Error
+        lastError = handshakeError
         continue
       }
 
@@ -262,7 +311,51 @@ export class NostrConnect implements Signer {
 
   // Private methods
 
-  private async _sendRequest(method: Nip46Method, params: string[]): Promise<string> {
+  private _setEncryption(scheme: Nip46Encryption): void {
+    if (this.encryptionType !== scheme) this.conversationKey = undefined
+    this.encryptionType = scheme
+  }
+
+  private _encrypt(plaintext: string): string {
+    if (this.encryptionType === 'nip44') {
+      this.conversationKey ??= nip44.getConversationKey(this.secretKey, this.remotePubkey)
+      return nip44.encrypt(plaintext, this.conversationKey)
+    }
+    return nip04.encrypt(this.secretKey, this.remotePubkey, plaintext)
+  }
+
+  private _decryptAs(ciphertext: string, scheme: Nip46Encryption): string {
+    if (scheme === 'nip44') {
+      this.conversationKey ??= nip44.getConversationKey(this.secretKey, this.remotePubkey)
+      return nip44.decrypt(ciphertext, this.conversationKey)
+    }
+    return nip04.decrypt(this.secretKey, this.remotePubkey, ciphertext)
+  }
+
+  /**
+   * Decrypt a response and report which scheme worked. NIP-04 ciphertexts carry
+   * an `?iv=` marker, so the shape gives a reliable first guess.
+   */
+  private _decryptWithScheme(ciphertext: string): { plaintext: string; scheme: Nip46Encryption } {
+    const order: Nip46Encryption[] = ciphertext.includes('?iv=')
+      ? ['nip04', 'nip44']
+      : ['nip44', 'nip04']
+
+    for (const scheme of order) {
+      try {
+        return { plaintext: this._decryptAs(ciphertext, scheme), scheme }
+      } catch {
+        // try the other scheme
+      }
+    }
+    throw new Nip46Error('Failed to decrypt response', 'NIP46_DECRYPTION_ERROR')
+  }
+
+  private async _sendRequest(
+    method: Nip46Method,
+    params: string[],
+    timeoutMs?: number,
+  ): Promise<string> {
     if (method !== 'connect' && !this._connected) {
       throw new Nip46ConnectionError('Not connected. Call connect() first.')
     }
@@ -270,8 +363,7 @@ export class NostrConnect implements Signer {
     const id = bytesToHex(randomBytes(16))
     const request = JSON.stringify({ id, method, params })
 
-    // Encrypt with NIP-04
-    const encrypted = nip04.encrypt(this.secretKey, this.remotePubkey, request)
+    const encrypted = this._encrypt(request)
 
     const eventTemplate: EventTemplate = {
       kind: NIP46_KIND,
@@ -286,7 +378,7 @@ export class NostrConnect implements Signer {
       const timeout = setTimeout(() => {
         this.pendingRequests.delete(id)
         reject(new Nip46TimeoutError(`Request timed out: ${method}`))
-      }, this.timeout)
+      }, timeoutMs ?? this.timeout)
 
       this.pendingRequests.set(id, { resolve, reject, timeout })
 
@@ -300,10 +392,17 @@ export class NostrConnect implements Signer {
 
   private _handleResponse(event: NostrEvent): void {
     let decrypted: string
+    let scheme: Nip46Encryption
     try {
-      decrypted = nip04.decrypt(this.secretKey, this.remotePubkey, event.content)
+      ({ plaintext: decrypted, scheme } = this._decryptWithScheme(event.content))
     } catch {
       return // Ignore events we can't decrypt
+    }
+
+    // A signer that answers in NIP-04 only speaks NIP-04; adopt it for the rest
+    // of the session unless the caller pinned a scheme explicitly.
+    if (this.encryptionMode === 'auto' && scheme !== this.encryptionType) {
+      this._setEncryption(scheme)
     }
 
     let response: { id: string; result?: string; error?: string }

@@ -11,7 +11,7 @@ import { NWC } from 'nostr-core'
 ## Constructor
 
 ```ts
-new NWC(connectionString: string)
+new NWC(connectionString: string, opts?: NWCOptions)
 ```
 
 Parses an NWC connection string and creates a client instance.
@@ -21,6 +21,7 @@ Parses an NWC connection string and creates a client instance.
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `connectionString` | `string` | NWC URI (`nostr+walletconnect://...` or `nostrwalletconnect://...`) |
+| `opts.negotiateEncryption` | `boolean?` | Treat the advertised encryption as a hint and recover from a mismatch. Default `true` |
 
 **Throws:** `NWCError` with code `'INVALID_CONNECTION_STRING'` if the URI can't be parsed.
 
@@ -89,7 +90,7 @@ Whether the underlying relay connection is active.
 ### connect
 
 ```ts
-await nwc.connect(): Promise<void>
+await nwc.connect(opts?: { verifyEncryption?: boolean }): Promise<void>
 ```
 
 Connects to the relay and auto-detects encryption (NIP-04 or NIP-44).
@@ -97,8 +98,72 @@ Connects to the relay and auto-detects encryption (NIP-04 or NIP-44).
 - Connects to the relay with a 5-second timeout
 - Queries the wallet's service info event (kind `13194`) to detect encryption
 - Starts notification subscription if event handlers are registered
+- With `verifyEncryption: true`, proves the detected scheme with one `get_info`
+  round trip during connect instead of waiting for the first real call
 
 **Throws:** `NWCConnectionError` on failure.
+
+## Encryption Negotiation
+
+Some wallet services advertise `nip44` in their kind 13194 info event but only
+actually speak `nip04` - Rizful (Megalithic.me backend) is a live example. The
+advertised scheme is therefore treated as a **hint, not a promise**.
+
+When a request fails in a way that indicates the wallet could not read it, the
+client flips schemes, clears the cached NIP-44 conversation key, and retries
+exactly once, then pins whichever scheme round-trips for every later call.
+
+Two signals trigger the flip, and nothing else does:
+
+1. the response cannot be decrypted in either scheme;
+2. the response decrypts to an **error** in a different scheme than the request
+   was sent in.
+
+A successful result is accepted whatever scheme it came back in, and a genuine
+wallet error (or a timeout, or a relay failure) propagates unchanged - so broken
+connections still fail fast and offline wallets do not get a pointless second
+round-trip.
+
+```ts
+const nwc = new NWC(connectionString)
+await nwc.connect()
+
+nwc.encryption          // 'nip44' - what the info event advertised
+nwc.encryptionVerified  // false - nothing has round-tripped yet
+
+await nwc.getInfo()     // flips to nip04 transparently if the wallet lied
+
+nwc.encryption          // 'nip04' - pinned, no further negotiation
+nwc.encryptionVerified  // true
+```
+
+Set `negotiateEncryption: false` to opt out and fail on the first mismatch.
+
+### encryption
+
+```ts
+nwc.encryption: EncryptionType | undefined   // getter
+```
+
+The scheme currently in use, once detected.
+
+### encryptionVerified
+
+```ts
+nwc.encryptionVerified: boolean   // getter
+```
+
+Whether a request has actually completed with the current scheme.
+
+### verifyEncryption
+
+```ts
+await nwc.verifyEncryption(): Promise<EncryptionType>
+```
+
+Proves the scheme with a single `get_info` round trip, negotiating if needed, and
+returns the pinned scheme. Cheap to call repeatedly - it returns immediately once
+verified.
 
 ### close
 
@@ -228,9 +293,11 @@ await nwc.subscribeNotifications(
 ): Promise<() => void>
 ```
 
-Subscribes to NIP-47 wallet notifications (kind `23196` for NIP-04, kind `23197` for NIP-44). Returns an unsubscribe function.
+Subscribes to NIP-47 wallet notifications. Returns an unsubscribe function.
 
-- Automatically selects the correct notification event kind based on encryption type
+- Subscribes to **both** notification kinds (`23196` for NIP-04, `23197` for
+  NIP-44) and decrypts by ciphertext shape, so notifications keep working
+  regardless of which scheme the wallet actually uses
 - Filters notifications by type if `notificationTypes` is provided
 - Auto-reconnects with a 1-second delay if the relay connection closes
 

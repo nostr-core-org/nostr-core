@@ -1,6 +1,6 @@
 # NIP-46
 
-Nostr Connect - remote signing over relays. Delegates signing to a remote signer (e.g. nsecBunker, Amber, LNbits) via NIP-04 encrypted kind `24133` events.
+Nostr Connect - remote signing over relays. Delegates signing to a remote signer (e.g. nsecBunker, Amber, LNbits) via encrypted kind `24133` events.
 
 ## NostrConnect
 
@@ -25,8 +25,33 @@ const signer = new NostrConnect({
   relayUrls: ['wss://relay1.example.com', 'wss://relay2.example.com'],
   secretKey: mySecretKey,  // optional - random key generated if omitted
   secret: 'mytoken',      // optional - required by Amber/LNbits signers
+  encryption: 'auto',     // optional - 'auto' (default) | 'nip44' | 'nip04'
 })
 ```
+
+### Transport Encryption
+
+NIP-46 specifies **NIP-44**, and current signers (Amber, nsec.app) require it.
+NIP-04 is kept only for backwards compatibility with older bunkers.
+
+`'auto'` (the default) starts on NIP-44 and falls back to NIP-04 only when the
+remote signer either answers in NIP-04 or does not answer the NIP-44 handshake at
+all. Responses are decrypted by ciphertext shape - NIP-04 payloads carry an
+`?iv=` marker - so a signer that replies in the other scheme is detected and
+adopted without a retry.
+
+```ts
+const signer = new NostrConnect(uri)
+signer.handshakeTimeout = 15000   // per-attempt timeout for the connect RPC
+
+await signer.connect()
+signer.encryption   // 'nip44' or 'nip04' - whichever the signer speaks
+```
+
+Pin a scheme explicitly with `encryption: 'nip44'` or `'nip04'` to skip the
+fallback entirely. A real error from the signer during the handshake surfaces
+immediately rather than triggering a fallback - only a silent signer justifies
+trying the other scheme.
 
 ### Connection
 
@@ -75,7 +100,8 @@ const relays = await signer.getRelays()  // RelayMap
 ### Configuration
 
 ```ts
-signer.timeout = 30000  // RPC timeout in ms (default: 60s)
+signer.timeout = 30000           // RPC timeout in ms (default: 60s)
+signer.handshakeTimeout = 15000  // per-attempt connect RPC timeout (default: 15s)
 ```
 
 ## parseConnectionURI
@@ -102,7 +128,15 @@ type Nip46ConnectionOptions = {
   relayUrls: string[]
   secretKey?: Uint8Array
   secret?: string
+  encryption?: 'auto' | 'nip44' | 'nip04'   // default: 'auto'
 }
+```
+
+## Nip46Encryption
+
+```ts
+type Nip46Encryption = 'nip44' | 'nip04'
+type Nip46EncryptionMode = Nip46Encryption | 'auto'
 ```
 
 ## Nip46AppMetadata

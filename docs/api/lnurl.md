@@ -20,6 +20,7 @@ import {
   decryptAesSuccessAction,
   parseLnurlMetadata,
   verifyPayment,
+  validateVerifyUrl,
 } from 'nostr-core'
 ```
 
@@ -143,10 +144,20 @@ type WithdrawRequestResponse = {
   defaultDescription: string
   minWithdrawable: number
   maxWithdrawable: number
+  pinLimit?: number          // LUD-24 / Bolt Card
+  [key: string]: unknown     // any other fields the service returned
 }
 ```
 
 LUD-03: First response from a withdraw request LNURL endpoint.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `pinLimit` | `number?` | LUD-24: msat threshold above which the service requires the card PIN |
+
+Fields outside the typed shape are passed through rather than dropped, so
+service-specific extensions (e.g. `balanceCheck`) stay reachable without
+re-fetching the params.
 
 ### VerifyResponse
 
@@ -155,8 +166,13 @@ type VerifyResponse = {
   settled: boolean
   preimage: string | null
   pr: string
+  [key: string]: unknown     // any other fields the service returned
 }
 ```
+
+Unknown fields are passed through. Fiat-payout providers extend the verify
+response with a delivery object (`mpesa`, `payout`: delivered, receipt,
+recipient, amount), which clients can surface without a second request.
 
 LUD-21: Response from a payment verification endpoint.
 
@@ -323,16 +339,68 @@ console.log(withdraw.k1)              // server-provided unique identifier
 function submitWithdrawRequest(
   withdrawRequest: WithdrawRequestResponse,
   invoice: string,
+  opts?: { pin?: string },
 ): Promise<void>
 ```
 
 Submits a withdraw request with a BOLT-11 invoice (LUD-03). The service will pay the provided invoice.
+
+The callback URL is built with the `URL` API, so `k1` and the invoice are
+properly encoded and any query parameters already on the callback are preserved.
 
 ```ts
 const withdraw = await lnurl.fetchWithdrawRequest('lnurl1dp68gurn8ghj7...')
 const invoice = 'lnbc10u1p...' // your BOLT-11 invoice
 await lnurl.submitWithdrawRequest(withdraw, invoice)
 ```
+
+### Bolt Card PIN (LUD-24)
+
+When the amount exceeds `withdrawRequest.pinLimit`, the service requires the
+card PIN:
+
+```ts
+if (withdraw.pinLimit !== undefined && amountMsats > withdraw.pinLimit) {
+  await lnurl.submitWithdrawRequest(withdraw, invoice, { pin: userPin })
+} else {
+  await lnurl.submitWithdrawRequest(withdraw, invoice)
+}
+```
+
+::: warning
+The PIN travels as a plaintext query parameter, so supplying one **requires** an
+`https:` callback - anything else throws `INSECURE_PIN_CALLBACK`. The value is
+also scrubbed to `pin=***` in any error this function throws, because some fetch
+implementations embed the full request URL in their error message.
+:::
+
+## lnurl.validateVerifyUrl
+
+```ts
+function validateVerifyUrl(verifyUrl: string, callbackUrl: string): string
+```
+
+Validates that a `verify` URL handed back by an LNURL-pay service is safe to
+poll: it must be `https:` and live on the same host as the pay request's own
+`callback`. The comparison is port-insensitive, since services routinely publish
+the callback and the verify endpoint on different ports of the same host.
+
+Fails closed - throws `LnurlError` rather than returning `false`. Returns the
+verify URL unchanged so it can be used inline.
+
+```ts
+lnurl.validateVerifyUrl('https://pay.example:8443/verify/1', 'https://pay.example/cb')
+// ok - same host
+
+lnurl.validateVerifyUrl('http://pay.example/verify/1', 'https://pay.example/cb')
+// throws INSECURE_VERIFY_URL
+
+lnurl.validateVerifyUrl('https://evil.example/track', 'https://pay.example/cb')
+// throws UNRELATED_VERIFY_URL
+```
+
+`verifyPayment` calls this for you when given a callback; use it directly if you
+poll the verify URL yourself.
 
 ## lnurl.parseSuccessAction
 
@@ -384,17 +452,31 @@ if (response.successAction?.tag === 'aes') {
 ## lnurl.verifyPayment
 
 ```ts
-function verifyPayment(verifyUrl: string): Promise<VerifyResponse>
+function verifyPayment(
+  verifyUrl: string,
+  callback?: string | PayRequestResponse,
+): Promise<VerifyResponse>
 ```
 
 Polls a verify URL to check if a payment has been settled (LUD-21).
+
+::: warning Always pass the callback
+The verify URL comes from the **service**, not from your wallet. Pass the
+originating pay request (or its `callback` URL) as the second argument so the URL
+is validated with [`validateVerifyUrl`](#lnurl-validateverifyurl) before it is
+fetched. Without it a malicious or compromised LNURL-pay service can hand back an
+arbitrary URL that your wallet then GETs after every payment - a third-party
+tracking and SSRF primitive.
+
+With no callback supplied, only non-HTTP schemes are refused.
+:::
 
 ```ts
 const response = await lnurl.requestInvoice(payRequest, 10000)
 
 // After paying the invoice, check settlement status
 if (response.verify) {
-  const status = await lnurl.verifyPayment(response.verify)
+  const status = await lnurl.verifyPayment(response.verify, payRequest)
   console.log(status.settled)  // true if payment is confirmed
   console.log(status.preimage) // payment preimage hex string
   console.log(status.pr)       // the original invoice

@@ -14,6 +14,7 @@ import { RelayPool } from 'nostr-core'
 new RelayPool(opts?: {
   websocketImplementation?: typeof WebSocket
   maxWaitForConnection?: number
+  reconnect?: ReconnectOptions | false
 })
 ```
 
@@ -21,8 +22,30 @@ new RelayPool(opts?: {
 |-----------|------|---------|-------------|
 | `opts.websocketImplementation` | `typeof WebSocket?` | - | Custom WebSocket class |
 | `opts.maxWaitForConnection` | `number?` | `3000` | Default connection timeout in ms |
+| `opts.reconnect` | `ReconnectOptions \| false` | enabled | Auto-reconnect settings applied to every relay in the pool. See [Relay](/api/relay#auto-reconnect) |
+
+::: tip
+Pooled relays auto-reconnect and replay their subscriptions by default, so a
+network blip no longer silently kills a standing `pool.subscribe()`. Use
+[`getRelay`](#getrelay) to attach `ondisconnect` / `onreconnect` handlers.
+:::
 
 ## Methods
+
+### getRelay
+
+```ts
+pool.getRelay(url: string): Relay | undefined
+```
+
+Returns the pooled [`Relay`](/api/relay) for a URL, if one has been created.
+Useful for attaching reconnect callbacks:
+
+```ts
+pool.getRelay('wss://relay.damus.io')?.ondisconnect = (reason) => {
+  console.warn('relay dropped:', reason)
+}
+```
 
 ### ensureRelay
 

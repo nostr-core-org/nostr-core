@@ -1,6 +1,6 @@
 {
   "name": "nostr-core",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Comprehensive Nostr protocol toolkit and NWC (Nostr Wallet Connect) client",
   "type": "module",
   "main": "./dist/index.js",
@@ -9,6 +9,22 @@
     ".": {
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
+    },
+    "./schema": {
+      "import": "./dist/schema.js",
+      "types": "./dist/schema.d.ts"
+    },
+    "./policy": {
+      "import": "./dist/policy.js",
+      "types": "./dist/policy.d.ts"
+    },
+    "./mail": {
+      "import": "./dist/mail.js",
+      "types": "./dist/mail.d.ts"
+    },
+    "./scheduling": {
+      "import": "./dist/scheduling.js",
+      "types": "./dist/scheduling.d.ts"
     }
   },
   "funding": {
@@ -82,6 +98,10 @@
     "nip-75",
     "nip-98",
     "nip-60",
+    "nip-61",
+    "nip-78",
+    "nip-87",
+    "nutzap",
     "cashu",
     "ecash",
     "bolt-11",

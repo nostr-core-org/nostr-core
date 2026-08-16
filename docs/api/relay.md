@@ -13,6 +13,7 @@ import { Relay } from 'nostr-core'
 ```ts
 new Relay(url: string, opts?: {
   websocketImplementation?: typeof WebSocket
+  reconnect?: ReconnectOptions | false
 })
 ```
 
@@ -20,8 +21,62 @@ new Relay(url: string, opts?: {
 |-----------|------|-------------|
 | `url` | `string` | Relay WebSocket URL |
 | `opts.websocketImplementation` | `typeof WebSocket?` | Custom WebSocket class |
+| `opts.reconnect` | `ReconnectOptions \| false` | Auto-reconnect settings; `false` disables it |
 
 The URL is normalized automatically (see [`normalizeURL`](/api/utils#normalizeurl)).
+
+## Auto-Reconnect
+
+A WebSocket that closes unexpectedly - laptop sleep, a NAT or proxy idle
+timeout, a relay restart - would otherwise take every standing subscription with
+it, and a long-running client would silently lose all its live feeds until a full
+reload. Auto-reconnect is **enabled by default**: the relay retries with
+exponential backoff and replays its open REQs once the socket is back.
+
+```ts
+type ReconnectOptions = {
+  enabled?: boolean            // default: true
+  initialDelay?: number        // default: 1000 ms
+  maxDelay?: number            // default: 30000 ms
+  factor?: number              // default: 2
+  maxAttempts?: number         // default: Infinity
+  jitter?: number              // default: 0.3 (fraction of the delay)
+  connectionTimeout?: number   // default: 5000 ms per retry
+}
+```
+
+```ts
+const relay = new Relay('wss://relay.damus.io', {
+  reconnect: { initialDelay: 500, maxDelay: 15_000, maxAttempts: 20 },
+})
+
+relay.ondisconnect = (reason) => console.warn('dropped:', reason)
+relay.onreconnect = () => console.log('back, subscriptions replayed')
+relay.onreconnectfailed = (err) => console.error('gave up:', err)
+```
+
+Behaviour:
+
+- `openSubs` is **kept** across a drop - those filters are exactly what has to be
+  replayed - and each subscription is re-fired with its original id and filters.
+- In-flight publishes still reject immediately; a dead socket can never answer them.
+- An **initial** `connect()` failure does not trigger retries; the promise rejects
+  as before. Retries only apply after a connection that had actually opened.
+- `close()` is explicit and final: it cancels any pending retry and closes the
+  subscriptions.
+- Calling `subscribe()` while a retry is pending queues the REQ instead of
+  throwing; it fires on reconnect.
+
+::: warning Duplicate events on replay
+A replayed REQ is a fresh REQ, so the relay resends matching history and
+`oneose` fires again. Dedupe by event id on the receiving side - the same
+guidance that applies to subscribing across multiple relays.
+:::
+
+::: tip
+Browsers cannot send WebSocket ping frames, so client-side keepalive is not an
+option; reconnect-on-close is the standard remedy.
+:::
 
 ## Properties
 
@@ -73,7 +128,10 @@ Currently active subscriptions, keyed by subscription ID.
 await relay.connect(opts?: { timeout?: number }): Promise<void>
 ```
 
-Establishes the WebSocket connection. All subscriptions are closed if the connection drops.
+Establishes the WebSocket connection. If the connection later drops, open
+subscriptions are preserved and replayed once it is re-established (see
+[Auto-Reconnect](#auto-reconnect)); with reconnect disabled they are closed
+instead.
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
@@ -103,7 +161,9 @@ Publishes an event and waits for the relay's OK response.
 relay.subscribe(filters: Filter[], params: SubscriptionParams & { id?: string }): Subscription
 ```
 
-Creates a subscription and immediately starts receiving events.
+Creates a subscription and immediately starts receiving events. If a reconnect
+is pending the REQ is queued and fired once the socket is back; if the relay is
+disconnected with no retry in flight, this throws.
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
@@ -129,7 +189,43 @@ Sends a raw message over the WebSocket.
 relay.close(): void
 ```
 
-Closes all subscriptions and the WebSocket connection.
+Closes all subscriptions and the WebSocket connection, and cancels auto-reconnect.
+This is the explicit, final teardown - the relay will not retry after it.
+
+## Reconnect Callbacks
+
+### ondisconnect
+
+```ts
+relay.ondisconnect: ((reason: string) => void) | undefined
+```
+
+Fired when an established connection drops, before a retry is scheduled.
+
+### onreconnect
+
+```ts
+relay.onreconnect: (() => void) | undefined
+```
+
+Fired after a dropped connection is re-established and its REQs replayed.
+
+### onreconnectfailed
+
+```ts
+relay.onreconnectfailed: ((err: Error) => void) | undefined
+```
+
+Fired when auto-reconnect gives up after `maxAttempts`. The open subscriptions
+are closed at that point.
+
+### reconnecting
+
+```ts
+relay.reconnecting: boolean
+```
+
+True while a retry is pending.
 
 ---
 
@@ -164,6 +260,15 @@ sub.close(reason?: string): void
 ```
 
 Sends a CLOSE message to the relay and calls `onclose`.
+
+#### reset
+
+```ts
+subscription.reset(): void
+```
+
+Clears the per-connection state (EOSE flag and timer) so the subscription can be
+re-fired on a fresh socket. Called for you during a reconnect.
 
 #### fire
 

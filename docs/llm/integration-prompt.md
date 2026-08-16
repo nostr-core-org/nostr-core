@@ -268,6 +268,13 @@ All signers: signer.getPublicKey(), signer.signEvent(template), signer.nip04?.en
     nip52.parseTimeBasedCalendarEvent(event) // TimeBasedCalendarEvent
     nip52.parseCalendar(event) // Calendar
     nip52.parseCalendarEventRSVP(event) // CalendarEventRSVP
+    nip52.buildCalendarEventAddress(31922|31923|31924|31925, pubkey, identifier) // all four kinds
+    nip52.buildAddressableAddress(kind, pubkey, identifier) // any 30000-39999 kind
+    // Participant tags are POSITIONAL: a role with no relay emits ['p', pk, '', role]
+    // Parsers fall back to the deprecated `name` tag when `title` is absent
+    // Parsed objects carry `extraTags` (unknown tags) and `days` (D tags) so a
+    //   create -> parse -> create round trip is lossless
+    // `calendarRefs` / `eventRefs` carry optional relay hints on a/e tags
 
 35. ZAP GOALS (NIP-75)
     import { nip75 } from 'nostr-core'
@@ -301,11 +308,89 @@ All signers: signer.getPublicKey(), signer.signEvent(template), signer.nip04?.en
     const payReq = await lnurl.fetchPayRequest('LNURL1...') // LnurlPayResponse
     const invoice = await lnurl.requestInvoice({ payRequest, amountMsats, comment? })
     const withdrawReq = await lnurl.fetchWithdrawRequest('LNURL1...') // LnurlWithdrawResponse
-    await lnurl.submitWithdrawRequest({ withdrawRequest, invoice })
+    await lnurl.submitWithdrawRequest(withdrawRequest, invoice, { pin? }) // LUD-24 Bolt Card PIN
+    // withdrawReq.pinLimit = msat threshold above which the PIN is required
+    // A pin REQUIRES an https callback and is scrubbed from error text
     const metadata = lnurl.parseLnurlMetadata(payReq.metadata) // ParsedMetadata[]
     const action = lnurl.parseSuccessAction(successAction) // SuccessAction
     const decrypted = lnurl.decryptAesSuccessAction(aesAction, preimage) // plaintext
-    const valid = lnurl.verifyPayment(payResponse) // boolean
+    const status = await lnurl.verifyPayment(verifyUrl, payRequest) // ALWAYS pass the pay request
+    lnurl.validateVerifyUrl(verifyUrl, callbackUrl) // https + same host, fails closed
+    // The verify URL comes from the service - unvalidated it is a tracking/SSRF primitive
+
+40. NUTZAPS (NIP-61)
+    import { nip61 } from 'nostr-core'
+    nip61.createNutzapInfoEvent({ relays, mints: [{ url, units? }], p2pkPubkey }, sk) // kind 10019
+    nip61.createNutzapEvent({ proofs, mint, recipient, eventId?, eventKind?, content? }, sk) // kind 9321
+    nip61.parseNutzap(event) // ParsedNutzap { proofs, mint, recipient, unit, sender, ... }
+    nip61.verifyNutzap(nutzap, info, recipientPubkey?) // { valid, errors[] }
+    nip61.toP2PKLockKey(pubkey) // '02' + 32-byte key, REQUIRED by the spec
+    nip61.createNutzapRedemptionEvent({ nutzapEventId, senderPubkey, amount }, sk) // kind 7376
+    nip61.getNutzapFilter(pubkey, mints, since?) // ALWAYS narrow by mint
+    // The P2PK key is the NIP-60 wallet privkey, NEVER the Nostr identity key
+    // DLEQ (NUT-12) verification needs the mint keyset - do it with a Cashu library
+
+41. APP DATA (NIP-78)
+    import { nip78 } from 'nostr-core'
+    nip78.createAppDataEvent({ identifier, content?, tags? }, sk) // kind 30078, addressable
+    nip78.createAppDataJsonEvent(identifier, value, sk)
+    nip78.createEncryptedAppDataJsonEvent(identifier, value, sk) // NIP-44 to self
+    nip78.parseEncryptedAppDataJson(event, sk)
+    nip78.getAppDataFilter(pubkey, identifier?) // { kinds:[30078], authors, '#d' }
+    // The `d` tag is NEVER encrypted - keep secrets out of the identifier
+
+42. MINT DISCOVERY (NIP-87)
+    import { nip87 } from 'nostr-core'
+    nip87.createCashuMintAnnouncement({ identifier, urls, nuts?, network? }, sk) // kind 38172
+    nip87.createFedimintAnnouncement({ identifier, inviteCodes, modules?, network? }, sk) // kind 38173
+    nip87.createMintRecommendation({ identifier, recommendedKind, connections?, announcements? }, sk) // kind 38000
+    nip87.tallyRecommendations(events) // Map<identifier, distinct endorsing pubkeys>
+    nip87.getMintRecommendationFilter({ authors: followList, kind: 38172 })
+    // Query recommendations from the user's follows; querying announcements
+    //   directly bypasses the web of trust
+
+43. SCHEMA - runtime validation (nostr-core/schema)
+    import { schema } from 'nostr-core'
+    schema.nostrEvent.is(value)          // structural type guard
+    schema.verifiedNostrEvent.is(value)  // + id and signature, always uncached
+    schema.filter.is(value)              // rejects unknown keys, catching typos
+    schema.relayMessage / schema.clientMessage // wire frames
+    schema.json(schema.relayMessage).safeParse(raw) // parse + validate in one step
+    schema.pubkey / eventId / signature / relayUrl / nip05Address / tags
+    // Every validator: .is() guard, .safeParse() -> {ok, issues[]}, .parse() throws SchemaError
+    // Validate at the edges - TypeScript types say nothing about relay input
+
+44. POLICY - composable event checks (nostr-core/policy)
+    import { policy } from 'nostr-core'
+    const p = policy.pipe([policy.noDuplicates(), policy.blockKeywords(['spam']), policy.requirePow(20)])
+    const { accepted, policy: which, reason } = await p.check(event)
+    // Built-ins: noDuplicates, requirePow, blockKeywords, filterPolicy,
+    //   rejectFilterPolicy, kindAllowList/DenyList, pubkeyAllowList/DenyList,
+    //   sizeLimit, rateLimit, requireValidSignature, createdAtPolicy, notExpired
+    // Combinators: pipe (first rejection wins), anyOf, not, customPolicy
+    // Stateful policies (noDuplicates, rateLimit) must be built ONCE and reused
+
+45. MAIL OVER NOSTR (experimental, nostr-core/mail)
+    import { mail } from 'nostr-core'
+    const copies = mail.createMailMessage({ subject, body, to, cc?, bcc?, attachments? }, sk)
+    // Returns one gift-wrapped copy per recipient: {recipient, role, rumor, wrap}
+    mail.parseMailMessage(wrap, sk) // ParsedMail
+    mail.createReply(original, { body, replyAll? }, myPubkey)
+    mail.getThreadId(parsed) // thread tag, or own id when it is the root
+    await mail.uploadMailAttachment({ data, name, mime }, blossomServer, sk)
+    mail.getMailFilter(pubkey) // { kinds: [1059], '#p': [pubkey] } - gift wraps
+    // Bcc is private BY CONSTRUCTION: each blind recipient gets their own rumor
+    //   listing only themselves; To/Cc copies carry no bcc at all
+    // MAIL_KIND (1314) is PROVISIONAL - no ratified NIP for mail exists yet
+
+46. APPOINTMENT SCHEDULING (experimental, nostr-core/scheduling)
+    import { scheduling } from 'nostr-core'
+    scheduling.createAvailabilityEvent({ identifier, title, timezone, durationMinutes, rules }, sk) // kind 31926
+    scheduling.generateSlots(availability, { from, to, busy?, now? }) // DST-correct Slot[]
+    scheduling.isSlotAvailable(availability, slot, { busy? }) // ALWAYS re-check host-side
+    scheduling.createBookingRequest({...}, sk) // gift-wrapped NIP-52 kind 31923
+    scheduling.createBookingCancellation({...}, sk) // gift-wrapped declined kind 31925 RSVP
+    // AVAILABILITY_KIND (31926) is PROVISIONAL; bookings reuse ratified NIP-52 kinds
 
 ## Navigate Nostr (Ecosystem References)
 For NIPs, LNURL LUDs, Cashu NUTs, and Blossom BUDs, use the /navigate-nostr skill or consult:
@@ -323,6 +408,18 @@ For NIPs, LNURL LUDs, Cashu NUTs, and Blossom BUDs, use the /navigate-nostr skil
 - Errors have a .code property: INSUFFICIENT_BALANCE, REPLY_TIMEOUT, CONNECTION_ERROR, etc.
 - Default reply timeout is 60s. Set nwc.replyTimeout for custom values
 - Confirm payment amounts with the user before calling payInvoice
+- The encryption a wallet advertises is a HINT: NWC flips nip44<->nip04 and retries
+  once if a request proves unreadable, then pins what works. Read nwc.encryption /
+  nwc.encryptionVerified; pass { negotiateEncryption: false } to opt out
+- NIP-46 defaults to NIP-44 (spec + Amber) and falls back to NIP-04 only for legacy
+  bunkers. Pin with `encryption: 'nip44' | 'nip04'` when you know the signer
+- Relays auto-reconnect with exponential backoff and REPLAY their open REQs, so a
+  network blip no longer kills standing subscriptions. A replayed REQ resends
+  history - dedupe by event id. Hook relay.ondisconnect / onreconnect; relay.close()
+  is final and cancels retries
+- verifyEvent() caches its result on a symbol that object spread copies, so
+  `{...signed, content:'x'}` would verify as valid. Use verifyEventSignature() for
+  anything untrusted (schema/policy already do)
 ```
 
 ## Quick Start Code Template
@@ -553,3 +650,7 @@ import('nostr-core').then(async ({NWC}) => {
 - [ ] `nwc.listTransactions()` returns transaction history
 - [ ] Error handling works for `NWCWalletError`, `NWCTimeoutError`, `NWCConnectionError`
 - [ ] `nwc.close()` is called in all code paths (including error paths)
+- [ ] Wallets that mis-advertise nip44 still work (`nwc.encryption` flips to `nip04`)
+- [ ] Standing subscriptions survive a relay restart (REQs are replayed)
+- [ ] LUD-21 `verifyPayment` is called with the originating pay request
+- [ ] Untrusted events are checked with `schema.verifiedNostrEvent` or `policy.requireValidSignature()`

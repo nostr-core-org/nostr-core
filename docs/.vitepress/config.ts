@@ -119,10 +119,13 @@ export default defineConfig({
               { text: 'NIP-58', link: '/api/nip58' },
               { text: 'NIP-59', link: '/api/nip59' },
               { text: 'NIP-60', link: '/api/nip60' },
+              { text: 'NIP-61', link: '/api/nip61' },
               { text: 'NIP-65', link: '/api/nip65' },
               { text: 'NIP-68', link: '/api/nip68' },
               { text: 'NIP-69', link: '/api/nip69' },
               { text: 'NIP-75', link: '/api/nip75' },
+              { text: 'NIP-78', link: '/api/nip78' },
+              { text: 'NIP-87', link: '/api/nip87' },
               { text: 'NIP-98', link: '/api/nip98' },
             ],
           },
@@ -134,6 +137,22 @@ export default defineConfig({
               { text: 'BOLT-11 Decoder', link: '/api/bolt11' },
               { text: 'Blossom Media', link: '/api/blossom' },
               { text: 'RSS Import', link: '/api/rss' },
+            ],
+          },
+          {
+            text: 'Validation',
+            collapsed: true,
+            items: [
+              { text: 'Schema', link: '/api/schema' },
+              { text: 'Policy', link: '/api/policy' },
+            ],
+          },
+          {
+            text: 'Experimental',
+            collapsed: true,
+            items: [
+              { text: 'Mail over Nostr', link: '/api/mail' },
+              { text: 'Appointment Scheduling', link: '/api/scheduling' },
             ],
           },
           {

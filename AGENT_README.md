@@ -1070,11 +1070,15 @@ import { lnurl } from 'nostr-core'
 const withdrawReq = await lnurl.fetchWithdrawRequest('LNURL1...')
 // { callback, k1, minWithdrawable, maxWithdrawable, defaultDescription, tag: 'withdrawRequest' }
 
+// withdrawReq.pinLimit is the LUD-24 msat threshold above which the Bolt Card
+// PIN is required. Unknown service fields are passed through, not dropped.
+
 // Submit a withdraw request with your invoice
-await lnurl.submitWithdrawRequest({
-  withdrawRequest: withdrawReq,
-  invoice: 'lnbc10u1pj...',
-})
+await lnurl.submitWithdrawRequest(withdrawReq, 'lnbc10u1pj...')
+
+// With a Bolt Card PIN (LUD-24). Requires an https callback; the value is
+// scrubbed from any error message this throws.
+await lnurl.submitWithdrawRequest(withdrawReq, 'lnbc10u1pj...', { pin: '1234' })
 ```
 
 ### Payment Verification (LUD-21)
@@ -1082,7 +1086,13 @@ await lnurl.submitWithdrawRequest({
 ```javascript
 import { lnurl } from 'nostr-core'
 
-const isValid = lnurl.verifyPayment(payResponse)
+// ALWAYS pass the originating pay request. The verify URL comes from the
+// service, and unvalidated it is a third-party tracking / SSRF primitive.
+const status = await lnurl.verifyPayment(callbackResponse.verify, payRequest)
+// { settled, preimage, pr, ...any extra fields the service returned }
+
+// Or validate it yourself if you poll the URL directly:
+lnurl.validateVerifyUrl(verifyUrl, payRequest.callback) // https + same host, throws otherwise
 ```
 
 ---
@@ -1281,6 +1291,146 @@ const parsed = nip69.parseOrder(orderEvent) // P2POrder (fiatAmount is number or
 
 ---
 
+## Nutzaps (NIP-61)
+
+P2PK-locked Cashu payments where the payment is the receipt.
+
+```javascript
+import { nip61 } from 'nostr-core'
+
+// Advertise how to be paid (kind 10019)
+const info = nip61.createNutzapInfoEvent({
+  relays: ['wss://relay1'],
+  mints: [{ url: 'https://stablenut.umint.cash', units: ['sat'] }],
+  p2pkPubkey: walletPubkey,   // the NIP-60 wallet privkey, NOT your identity key
+}, secretKey)
+
+// Send a nutzap (kind 9321) - proofs must be P2PK-locked to that key
+const nutzap = nip61.createNutzapEvent({
+  proofs, mint: 'https://stablenut.umint.cash', recipient: bobPubkey,
+  eventId: likedEventId, eventKind: 1, content: 'zap!',
+}, secretKey)
+
+// Verify before swapping
+const { valid, errors } = nip61.verifyNutzap(nip61.parseNutzap(nutzap), parsedInfo, bobPubkey)
+
+// Record the claim (kind 7376), published to the SENDER's read relays
+nip61.createNutzapRedemptionEvent({ nutzapEventId, senderPubkey, amount: '5' }, secretKey)
+
+// Always narrow the receive filter by mint
+nip61.getNutzapFilter(myPubkey, trustedMints, sinceLatestHistory)
+```
+
+---
+
+## Arbitrary App Data (NIP-78)
+
+Relays as a personal database. The `d` tag stays public; the content need not.
+
+```javascript
+import { nip78 } from 'nostr-core'
+
+const prefs = nip78.createEncryptedAppDataJsonEvent(
+  'my-app/prefs', { theme: 'dark' }, secretKey,
+) // kind 30078, NIP-44 encrypted to self
+
+nip78.parseEncryptedAppDataJson(prefs, secretKey) // { theme: 'dark' }
+nip78.getAppDataFilter(pubkey, 'my-app/prefs')
+```
+
+---
+
+## Mint Discovery (NIP-87)
+
+```javascript
+import { nip87 } from 'nostr-core'
+
+nip87.createCashuMintAnnouncement({ identifier: mintPubkey, urls, nuts, network: 'mainnet' }, sk) // 38172
+nip87.createFedimintAnnouncement({ identifier: fedId, inviteCodes, modules }, sk)                 // 38173
+nip87.createMintRecommendation({ identifier: mintPubkey, recommendedKind: 38172 }, sk)            // 38000
+
+// Rank mints by how many people you follow vouch for them
+const counts = nip87.tallyRecommendations(recommendationEvents)
+```
+
+---
+
+## Runtime Validation (Schema)
+
+TypeScript types say nothing about what a relay actually sent you.
+
+```javascript
+import { schema } from 'nostr-core'   // or 'nostr-core/schema'
+
+schema.verifiedNostrEvent.is(fromRelay)   // structure + id + signature
+schema.filter.is(untrustedFilter)         // rejects unknown keys
+schema.json(schema.relayMessage).safeParse(rawFrame) // { ok, value } | { ok, issues }
+schema.pubkey.parse(input)                // throws SchemaError with .issues
+```
+
+---
+
+## Event Policies (Policy)
+
+```javascript
+import { policy } from 'nostr-core'   // or 'nostr-core/policy'
+
+// Build stateful policies ONCE and reuse them.
+const ingress = policy.pipe([
+  policy.requireValidSignature(),
+  policy.notExpired(),
+  policy.noDuplicates(),
+  policy.rateLimit({ max: 20, windowMs: 60_000 }),
+  policy.blockKeywords(['spam', /free\s+bitcoin/i]),
+])
+
+const { accepted, reason } = await ingress.check(event)
+```
+
+---
+
+## Mail over Nostr (experimental)
+
+```javascript
+import { mail } from 'nostr-core'   // or 'nostr-core/mail'
+
+// One gift-wrapped copy per recipient. Bcc is private by construction:
+// each blind recipient gets their own rumor listing only themselves.
+const copies = mail.createMailMessage({
+  subject: 'Q3 planning', body: 'Agenda attached.',
+  to: [bobPubkey], cc: [carolPubkey], bcc: [legalPubkey],
+}, secretKey)
+
+const received = mail.parseMailMessage(wrap, secretKey)
+const reply = mail.createReply(received, { body: 'Looks good', replyAll: true }, myPubkey)
+```
+
+MAIL_KIND (1314) is provisional - no ratified NIP for mail exists yet.
+
+---
+
+## Appointment Scheduling (experimental)
+
+```javascript
+import { scheduling } from 'nostr-core'   // or 'nostr-core/scheduling'
+
+const availability = {
+  identifier: 'intro-call', title: '30 min intro',
+  timezone: 'Europe/Berlin', durationMinutes: 30,
+  rules: [{ weekday: 1, start: '09:00', end: '12:00' }],  // Sunday = 0
+}
+
+scheduling.createAvailabilityEvent(availability, hostSk)          // kind 31926 (provisional)
+scheduling.generateSlots(availability, { from, to, busy })        // DST-correct
+scheduling.createBookingRequest({ ... }, bookerSk)                // gift-wrapped NIP-52 31923
+scheduling.createBookingCancellation({ ... }, sk)                 // gift-wrapped declined 31925
+
+// Always re-check a requested slot host-side.
+scheduling.isSlotAvailable(availability, { start, end }, { busy })
+```
+
+---
+
 ## Links
 
 - **npm:** https://www.npmjs.com/package/nostr-core
@@ -1296,4 +1446,7 @@ const parsed = nip69.parseOrder(orderEvent) // P2POrder (fiatAmount is number or
 - **NIP-69 Spec:** https://github.com/nostr-protocol/nips/blob/master/69.md
 - **NIP-75 Spec:** https://github.com/nostr-protocol/nips/blob/master/75.md
 - **NIP-17 Spec:** https://github.com/nostr-protocol/nips/blob/master/17.md
+- **NIP-61 Spec:** https://github.com/nostr-protocol/nips/blob/master/61.md
+- **NIP-78 Spec:** https://github.com/nostr-protocol/nips/blob/master/78.md
+- **NIP-87 Spec:** https://github.com/nostr-protocol/nips/blob/master/87.md
 - **License:** MIT

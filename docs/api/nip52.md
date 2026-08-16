@@ -21,6 +21,9 @@ import {
   createCalendarEventRSVP,
   parseCalendarEventRSVP,
   buildCalendarEventAddress,
+  buildAddressableAddress,
+  parseAddressableAddress,
+  calendarEventDays,
   isCalendarEvent,
 } from 'nostr-core'
 ```
@@ -34,6 +37,66 @@ type CalendarEventParticipant = {
   role?: string
 }
 ```
+
+NIP-52 participant tags are **positional**: `["p", pubkey, relay, role]`. When a
+role is present the relay slot is always emitted, empty when unknown, so the role
+never lands in the relay position:
+
+```ts
+{ pubkey, role: 'host' }                       // -> ['p', pubkey, '', 'host']
+{ pubkey, relay: 'wss://r.example', role: 'host' }  // -> ['p', pubkey, 'wss://r.example', 'host']
+{ pubkey, relay: 'wss://r.example' }           // -> ['p', pubkey, 'wss://r.example']
+```
+
+## CalendarReference Type
+
+```ts
+type CalendarReference = {
+  address: string
+  relayHint?: string
+}
+```
+
+NIP-52 allows an optional relay URL in the third slot of a calendar's member `a`
+tags and an RSVP's `a` / `e` tags. For events that only live on their author's
+own relay, the hint is often the difference between a reference resolving and
+not resolving.
+
+Every parsed object exposes both forms: `calendarAddresses` / `eventAddresses`
+hold plain strings, `calendarRefs` / `eventRefs` hold the same entries with their
+hints. On create, the hinted list wins when both are supplied, so a
+parse -> create round trip keeps its hints without duplicating tags.
+
+```ts
+const calendar = nip52.createCalendarTemplate({
+  identifier: 'work', title: 'Work',
+  eventRefs: [{ address: '31923:abc:standup', relayHint: 'wss://relay.example' }],
+})
+// -> ['a', '31923:abc:standup', 'wss://relay.example']
+```
+
+## Unknown Tag Passthrough
+
+All four parsers collect tags they do not recognize into `extraTags`, and all
+four templates re-emit them. A create -> parse -> create round trip is therefore
+lossless, including the `D` day-granularity tags kind 31923 requires and any
+app-specific tags a client carries.
+
+```ts
+const parsed = nip52.parseTimeBasedCalendarEvent(event)
+parsed.days       // [19675, 19676, ...] from the D tags
+parsed.extraTags  // [['x-app-custom', 'v1'], ...]
+
+nip52.createTimeBasedCalendarEventTemplate(parsed)   // emits both again
+```
+
+## Deprecated `name` Tag Fallback
+
+NIP-52 deprecated `name` in favour of `title` in 2023 but keeps it as a read
+fallback, and clients in the wild still write only `name` (Coracle's nostrtime
+for 31923 events, Flockstr for 31924 calendars). The parsers read
+`title ?? name`, so those events no longer parse with an empty title. Templates
+always emit `title`.
 
 ## DateBasedCalendarEvent Type
 
@@ -52,6 +115,8 @@ type DateBasedCalendarEvent = {
   hashtags?: string[]
   references?: string[]
   calendarAddresses?: string[]
+  calendarRefs?: CalendarReference[]   // `a` tags with relay hints
+  extraTags?: string[][]               // unrecognized tags, preserved
 }
 ```
 
@@ -74,6 +139,9 @@ type TimeBasedCalendarEvent = {
   hashtags?: string[]
   references?: string[]
   calendarAddresses?: string[]
+  calendarRefs?: CalendarReference[]   // `a` tags with relay hints
+  days?: number[]                      // `D` day-granularity tags
+  extraTags?: string[][]               // unrecognized tags, preserved
 }
 ```
 
@@ -84,7 +152,9 @@ type Calendar = {
   identifier: string
   title: string
   content?: string
-  eventAddresses?: string[]  // references to kind 31922 or 31923
+  eventAddresses?: string[]        // references to kind 31922 or 31923
+  eventRefs?: CalendarReference[]  // the same, with optional relay hints
+  extraTags?: string[][]           // unrecognized tags, preserved
 }
 ```
 
@@ -95,10 +165,13 @@ type CalendarEventRSVP = {
   identifier: string
   calendarEventAddress: string
   status: 'accepted' | 'declined' | 'tentative'
+  calendarEventAddressRelayHint?: string   // slot 2 of the `a` tag
   eventId?: string
+  eventIdRelayHint?: string                // slot 2 of the `e` tag
   freebusy?: 'free' | 'busy'
   calendarEventAuthor?: string
   content?: string
+  extraTags?: string[][]                   // unrecognized tags, preserved
 }
 ```
 
@@ -248,15 +321,62 @@ Parses a kind 31925 RSVP event.
 ## nip52.buildCalendarEventAddress
 
 ```ts
-function buildCalendarEventAddress(kind: 31922 | 31923, pubkey: string, identifier: string): string
+function buildCalendarEventAddress(
+  kind: 31922 | 31923 | 31924 | 31925,
+  pubkey: string,
+  identifier: string,
+): string
 ```
 
-Builds an `a` tag address string for a calendar event.
+Builds an `a` tag address string for any addressable NIP-52 kind - the two event
+kinds, calendars (31924) and RSVPs (31925).
 
 ```ts
 const address = nip52.buildCalendarEventAddress(31923, myPubkey, 'standup-2026-03-17')
 // '31923:abc123...:standup-2026-03-17'
+
+// An RSVP referencing its calendar
+nip52.buildCalendarEventAddress(31924, hostPubkey, 'work-calendar')
 ```
+
+## nip52.buildAddressableAddress
+
+```ts
+function buildAddressableAddress(kind: number, pubkey: string, identifier: string): string
+```
+
+Builds a coordinate for **any** addressable (parameterized-replaceable) kind in
+the 30000-39999 range. Throws for kinds outside it.
+
+```ts
+nip52.buildAddressableAddress(30078, pubkey, 'my-app/prefs')
+// '30078:abc123...:my-app/prefs'
+
+nip52.buildAddressableAddress(1, pubkey, 'x')   // throws: kind 1 is not addressable
+```
+
+## nip52.parseAddressableAddress
+
+```ts
+function parseAddressableAddress(address: string): {
+  kind: number
+  pubkey: string
+  identifier: string
+}
+```
+
+Splits a coordinate back into its parts. Identifiers containing colons round trip
+correctly.
+
+## nip52.calendarEventDays
+
+```ts
+function calendarEventDays(start: number, end?: number): number[]
+```
+
+Computes the `D` day-granularity tags (`floor(unix_seconds / 86400)`) an event
+spans - one per day. `createTimeBasedCalendarEventTemplate` calls this for you
+when `days` is omitted.
 
 ## nip52.isCalendarEvent
 

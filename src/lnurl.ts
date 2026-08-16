@@ -75,6 +75,13 @@ export type WithdrawRequestResponse = {
   defaultDescription: string
   minWithdrawable: number
   maxWithdrawable: number
+  /**
+   * LUD-24 / Bolt Card: msat threshold above which the service requires the
+   * card PIN. Present only when the service advertises it.
+   */
+  pinLimit?: number
+  /** Any additional non-standard fields the service returned. */
+  [key: string]: unknown
 }
 
 /** LUD-21: Payment verification response */
@@ -82,6 +89,11 @@ export type VerifyResponse = {
   settled: boolean
   preimage: string | null
   pr: string
+  /**
+   * Any additional fields the service returned. Fiat-payout providers extend
+   * the verify response with delivery objects (e.g. `mpesa`, `payout`).
+   */
+  [key: string]: unknown
 }
 
 /** Options for requesting an invoice */
@@ -89,6 +101,15 @@ export type RequestInvoiceOptions = {
   comment?: string
   payerData?: PayerData
   nostr?: string
+}
+
+/** Options for submitting a withdraw request */
+export type SubmitWithdrawOptions = {
+  /**
+   * LUD-24 / Bolt Card PIN. Travels as a plaintext query parameter, so the
+   * callback is required to be `https:` whenever one is supplied.
+   */
+  pin?: string
 }
 
 // ── LUD-01: Bech32 encode/decode ───────────────────────────────────────
@@ -251,26 +272,28 @@ export async function requestInvoice(
     )
   }
 
-  const sep = payRequest.callback.includes('?') ? '&' : '?'
-  let url = `${payRequest.callback}${sep}amount=${amountMsats}`
+  const target = buildUrl(payRequest.callback, 'pay request callback')
+  target.searchParams.set('amount', String(amountMsats))
 
   // LUD-12: comment
   if (opts?.comment) {
     if (payRequest.commentAllowed && opts.comment.length > payRequest.commentAllowed) {
       throw new LnurlError(`Comment exceeds max length of ${payRequest.commentAllowed} chars`)
     }
-    url += `&comment=${encodeURIComponent(opts.comment)}`
+    target.searchParams.set('comment', opts.comment)
   }
 
   // LUD-18: payer data
   if (opts?.payerData) {
-    url += `&payerdata=${encodeURIComponent(JSON.stringify(opts.payerData))}`
+    target.searchParams.set('payerdata', JSON.stringify(opts.payerData))
   }
 
   // Nostr zap request
   if (opts?.nostr) {
-    url += `&nostr=${encodeURIComponent(opts.nostr)}`
+    target.searchParams.set('nostr', opts.nostr)
   }
+
+  const url = target.toString()
 
   let data: Record<string, unknown>
   try {
@@ -325,24 +348,51 @@ export async function fetchWithdrawRequest(input: string): Promise<WithdrawReque
   }
 
   return {
+    // Unknown fields first so the typed ones always win.
+    ...passthrough(data, WITHDRAW_KNOWN_FIELDS),
     tag: 'withdrawRequest',
     callback: data.callback as string,
     k1: data.k1 as string,
     defaultDescription: data.defaultDescription as string,
     minWithdrawable: data.minWithdrawable as number,
     maxWithdrawable: data.maxWithdrawable as number,
+    ...(typeof data.pinLimit === 'number' ? { pinLimit: data.pinLimit } : {}),
   }
 }
 
+const WITHDRAW_KNOWN_FIELDS = new Set([
+  'tag', 'callback', 'k1', 'defaultDescription', 'minWithdrawable', 'maxWithdrawable',
+  'pinLimit', 'status', 'reason',
+])
+
 /**
  * Submit a withdraw request with a BOLT-11 invoice.
+ *
+ * @param opts.pin - LUD-24 / Bolt Card PIN, required by some services once the
+ *   amount exceeds `withdrawRequest.pinLimit`. Because it travels as a
+ *   plaintext query parameter the callback must be `https:` when one is given,
+ *   and the value is scrubbed from any error text this function throws.
  */
 export async function submitWithdrawRequest(
   withdrawRequest: WithdrawRequestResponse,
   invoice: string,
+  opts?: SubmitWithdrawOptions,
 ): Promise<void> {
-  const sep = withdrawRequest.callback.includes('?') ? '&' : '?'
-  const url = `${withdrawRequest.callback}${sep}k1=${withdrawRequest.k1}&pr=${invoice}`
+  const target = buildUrl(withdrawRequest.callback, 'withdraw callback')
+  target.searchParams.set('k1', withdrawRequest.k1)
+  target.searchParams.set('pr', invoice)
+
+  if (opts?.pin !== undefined) {
+    if (target.protocol !== 'https:') {
+      throw new LnurlError(
+        `Refusing to send a PIN over "${target.protocol}" - the withdraw callback must use https:`,
+        'INSECURE_PIN_CALLBACK',
+      )
+    }
+    target.searchParams.set('pin', opts.pin)
+  }
+
+  const url = target.toString()
 
   let data: Record<string, unknown>
   try {
@@ -351,11 +401,12 @@ export async function submitWithdrawRequest(
     data = (await res.json()) as Record<string, unknown>
   } catch (err) {
     if (err instanceof LnurlError) throw err
-    throw new LnurlError(`Failed to submit withdraw request: ${(err as Error).message}`)
+    // Some fetch implementations embed the full request URL in the message.
+    throw new LnurlError(`Failed to submit withdraw request: ${scrubPin((err as Error).message)}`)
   }
 
   if (data.status === 'ERROR') {
-    throw new LnurlError(`Withdraw error: ${(data.reason as string) || 'Unknown'}`)
+    throw new LnurlError(`Withdraw error: ${scrubPin((data.reason as string) || 'Unknown')}`)
   }
 }
 
@@ -425,9 +476,67 @@ export async function decryptAesSuccessAction(
 // ── LUD-21: Verify payments ────────────────────────────────────────────
 
 /**
- * Poll a verify URL to check if a payment has been settled.
+ * Validate that a `verify` URL handed back by an LNURL-pay service is safe to
+ * poll: it must be `https:` and live on the same host as the pay request's own
+ * `callback`.
+ *
+ * Without this check a malicious or compromised service can point the wallet at
+ * an arbitrary third-party URL that then gets fetched after every payment.
+ * Fails closed - throws {@link LnurlError} rather than returning false.
+ *
+ * @returns The verify URL unchanged, so it can be used inline.
  */
-export async function verifyPayment(verifyUrl: string): Promise<VerifyResponse> {
+export function validateVerifyUrl(verifyUrl: string, callbackUrl: string): string {
+  const verify = buildUrl(verifyUrl, 'verify URL')
+  const callback = buildUrl(callbackUrl, 'callback URL')
+
+  if (verify.protocol !== 'https:') {
+    throw new LnurlError(
+      `Verify URL must use https: (got "${verify.protocol}")`,
+      'INSECURE_VERIFY_URL',
+    )
+  }
+
+  // Port-insensitive: services routinely publish the callback and the verify
+  // endpoint on different ports of the same host.
+  if (verify.hostname.toLowerCase() !== callback.hostname.toLowerCase()) {
+    throw new LnurlError(
+      `Verify URL host "${verify.hostname}" does not match the callback host "${callback.hostname}"`,
+      'UNRELATED_VERIFY_URL',
+    )
+  }
+
+  return verifyUrl
+}
+
+/**
+ * Poll a verify URL to check if a payment has been settled (LUD-21).
+ *
+ * Pass the originating pay request (or its `callback` URL) as the second
+ * argument so the verify URL is validated with {@link validateVerifyUrl}
+ * before it is fetched. Callers SHOULD always do this - the verify URL comes
+ * from the service, not from the wallet.
+ *
+ * Unknown response fields are passed through, so extensions such as a
+ * fiat-payout delivery object stay reachable on the returned value.
+ */
+export async function verifyPayment(
+  verifyUrl: string,
+  callback?: string | PayRequestResponse,
+): Promise<VerifyResponse> {
+  if (callback !== undefined) {
+    validateVerifyUrl(verifyUrl, typeof callback === 'string' ? callback : callback.callback)
+  } else {
+    // No callback to relate it to; at minimum refuse non-HTTP schemes.
+    const parsed = buildUrl(verifyUrl, 'verify URL')
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+      throw new LnurlError(
+        `Verify URL must use http(s): (got "${parsed.protocol}")`,
+        'INSECURE_VERIFY_URL',
+      )
+    }
+  }
+
   let data: Record<string, unknown>
   try {
     const res = await fetch(verifyUrl)
@@ -443,13 +552,39 @@ export async function verifyPayment(verifyUrl: string): Promise<VerifyResponse> 
   }
 
   return {
+    ...passthrough(data, VERIFY_KNOWN_FIELDS),
     settled: data.settled as boolean,
     preimage: (data.preimage as string) || null,
     pr: data.pr as string,
   }
 }
 
+const VERIFY_KNOWN_FIELDS = new Set(['settled', 'preimage', 'pr', 'status', 'reason'])
+
 // ── Helpers ────────────────────────────────────────────────────────────
+
+/** Parse a URL, raising a typed LNURL error instead of a bare TypeError. */
+function buildUrl(input: string, label: string): URL {
+  try {
+    return new URL(input)
+  } catch {
+    throw new LnurlError(`Invalid ${label}: ${input}`, 'INVALID_URL')
+  }
+}
+
+/** Copy every field that is not part of the typed shape. */
+function passthrough(data: Record<string, unknown>, known: Set<string>): Record<string, unknown> {
+  const extra: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(data)) {
+    if (!known.has(key)) extra[key] = value
+  }
+  return extra
+}
+
+/** Redact a `pin=` query parameter wherever it appears in free text. */
+function scrubPin(text: string): string {
+  return text.replace(/([?&]pin=)[^&\s"']*/gi, '$1***')
+}
 
 function hexToBytes(hex: string): Uint8Array {
   const bytes = new Uint8Array(hex.length / 2)

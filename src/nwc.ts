@@ -49,6 +49,31 @@ const NWC_NOTIFICATION_NIP44_KIND = 23197
 
 type EventHandler = (notification: Nip47Notification) => void
 
+/**
+ * Internal signal: the wallet answered in a different encryption scheme than we
+ * used for the request, and the payload was an error. Strong evidence that the
+ * wallet could not read the request at all.
+ */
+class EncryptionMismatchError extends NWCError {
+  detected: EncryptionType
+  constructor(detected: EncryptionType) {
+    super(`Wallet replied using ${detected}`, 'ENCRYPTION_MISMATCH')
+    this.name = 'EncryptionMismatchError'
+    this.detected = detected
+  }
+}
+
+export type NWCOptions = {
+  /**
+   * Treat the encryption scheme advertised in the wallet's kind 13194 info
+   * event as a hint rather than a promise. When a request fails in a way that
+   * indicates the wallet cannot read it, the client flips schemes, clears the
+   * cached NIP-44 conversation key and retries once, then pins whichever scheme
+   * round-trips. Default: true.
+   */
+  negotiateEncryption?: boolean
+}
+
 export class NWC {
   private walletPubkey: string
   private relayUrls: string[]
@@ -60,6 +85,8 @@ export class NWC {
   private _connected = false
   private eventHandlers = new Map<string, Set<EventHandler>>()
   private notificationSub: { close: (reason?: string) => void } | undefined
+  private negotiateEncryption: boolean
+  private encryptionConfirmed = false
 
   // Timeout settings (ms)
   public replyTimeout = 60000
@@ -70,13 +97,27 @@ export class NWC {
     return this.relayUrls[0]
   }
 
-  constructor(connectionString: string) {
-    const opts = NWC.parseConnectionString(connectionString)
-    this.walletPubkey = opts.walletPubkey
-    this.relayUrls = opts.relayUrls
-    this.secretKey = hexToBytes(opts.secret)
+  /**
+   * The encryption scheme currently in use, once detected.
+   * `encryptionVerified` tells you whether it has actually round-tripped.
+   */
+  get encryption(): EncryptionType | undefined {
+    return this.encryptionType
+  }
+
+  /** True once a request has completed successfully with the current scheme. */
+  get encryptionVerified(): boolean {
+    return this.encryptionConfirmed
+  }
+
+  constructor(connectionString: string, opts?: NWCOptions) {
+    const parsed = NWC.parseConnectionString(connectionString)
+    this.walletPubkey = parsed.walletPubkey
+    this.relayUrls = parsed.relayUrls
+    this.secretKey = hexToBytes(parsed.secret)
     this.publicKey = getPublicKey(this.secretKey)
     this.pool = new RelayPool()
+    this.negotiateEncryption = opts?.negotiateEncryption ?? true
   }
 
   static parseConnectionString(connectionString: string): NWCConnectionOptions {
@@ -115,7 +156,12 @@ export class NWC {
     return this._connected
   }
 
-  async connect(): Promise<void> {
+  /**
+   * @param opts.verifyEncryption - Prove the detected encryption scheme with a
+   *   single `get_info` round trip during connect instead of waiting for the
+   *   first real call to reveal a mismatch. Default: false.
+   */
+  async connect(opts?: { verifyEncryption?: boolean }): Promise<void> {
     // Connect to all relays in parallel; succeed if at least one connects
     const results = await Promise.allSettled(
       this.relayUrls.map(url => this.pool.ensureRelay(url, { connectionTimeout: 5000 })),
@@ -133,10 +179,30 @@ export class NWC {
     // Auto-detect encryption type
     await this._detectEncryption()
 
+    if (opts?.verifyEncryption) {
+      await this.verifyEncryption()
+    }
+
     // Start notification subscription if we have handlers
     if (this.eventHandlers.size > 0) {
       this._startNotificationSub()
     }
+  }
+
+  /**
+   * Prove the detected encryption scheme with a single `get_info` round trip.
+   *
+   * Some wallet services advertise `nip44` in their kind 13194 info event but
+   * only actually speak `nip04`. The advertised scheme is a hint; this confirms
+   * it, flipping and retrying once if the wallet cannot read our requests.
+   * Failures unrelated to encryption (timeout, relay down, wallet error)
+   * propagate unchanged.
+   */
+  async verifyEncryption(): Promise<EncryptionType> {
+    if (this.encryptionConfirmed && this.encryptionType) return this.encryptionType
+    if (!this.encryptionType) await this._detectEncryption()
+    await this.getInfo()
+    return this.encryptionType!
   }
 
   // --- Public API Methods ---
@@ -227,9 +293,6 @@ export class NWC {
       await this._detectEncryption()
     }
 
-    const notificationKind =
-      this.encryptionType === 'nip04' ? NWC_NOTIFICATION_NIP04_KIND : NWC_NOTIFICATION_NIP44_KIND
-
     let subscribed = true
     let currentSub: { close: (reason?: string) => void } | undefined
 
@@ -239,7 +302,7 @@ export class NWC {
       currentSub = this.pool.subscribe(
         this.relayUrls,
         {
-          kinds: [notificationKind],
+          kinds: [NWC_NOTIFICATION_NIP04_KIND, NWC_NOTIFICATION_NIP44_KIND],
           authors: [this.walletPubkey],
           '#p': [this.publicKey],
         } as Filter,
@@ -339,17 +402,54 @@ export class NWC {
     return nip04.encrypt(this.secretKey, this.walletPubkey, content)
   }
 
-  private async _decrypt(content: string): Promise<string> {
-    try {
-      if (this.encryptionType === 'nip44') {
-        if (!this.conversationKey) {
-          this.conversationKey = nip44.getConversationKey(this.secretKey, this.walletPubkey)
-        }
-        return nip44.decrypt(content, this.conversationKey)
+  private _decryptAs(content: string, scheme: EncryptionType): string {
+    if (scheme === 'nip44') {
+      if (!this.conversationKey) {
+        this.conversationKey = nip44.getConversationKey(this.secretKey, this.walletPubkey)
       }
-      return nip04.decrypt(this.secretKey, this.walletPubkey, content)
-    } catch (err) {
-      throw new NWCDecryptionError(`Failed to decrypt response: ${(err as Error).message}`)
+      return nip44.decrypt(content, this.conversationKey)
+    }
+    return nip04.decrypt(this.secretKey, this.walletPubkey, content)
+  }
+
+  /**
+   * Decrypt a payload and report which scheme actually worked.
+   *
+   * NIP-04 ciphertexts carry an `?iv=` marker, so the shape is a reliable first
+   * guess; the other scheme is still tried as a fallback. This makes the client
+   * tolerant of wallets that answer in a scheme other than the one they were
+   * asked in.
+   */
+  private _decryptWithScheme(content: string): { plaintext: string; scheme: EncryptionType } {
+    const order: EncryptionType[] = content.includes('?iv=')
+      ? ['nip04', 'nip44']
+      : ['nip44', 'nip04']
+
+    let lastError: Error | undefined
+    for (const scheme of order) {
+      try {
+        return { plaintext: this._decryptAs(content, scheme), scheme }
+      } catch (err) {
+        lastError = err as Error
+      }
+    }
+    throw new NWCDecryptionError(`Failed to decrypt response: ${lastError?.message}`)
+  }
+
+  private async _decrypt(content: string): Promise<string> {
+    return this._decryptWithScheme(content).plaintext
+  }
+
+  /** Switch to the other encryption scheme and drop the cached NIP-44 key. */
+  private _flipEncryption(to?: EncryptionType): void {
+    this.encryptionType = to ?? (this.encryptionType === 'nip44' ? 'nip04' : 'nip44')
+    this.conversationKey = undefined
+
+    // The notification kind depends on the scheme, so restart any live sub.
+    if (this.notificationSub) {
+      this.notificationSub.close()
+      this.notificationSub = undefined
+      if (this.eventHandlers.size > 0) this._startNotificationSub()
     }
   }
 
@@ -358,9 +458,38 @@ export class NWC {
     params: unknown,
     opts?: { replyTimeout?: number },
   ): Promise<T> {
+    try {
+      const result = await this._executeRequestOnce<T>(method, params, opts)
+      this.encryptionConfirmed = true
+      return result
+    } catch (err) {
+      const canRetry =
+        this.negotiateEncryption &&
+        !this.encryptionConfirmed &&
+        (err instanceof EncryptionMismatchError || err instanceof NWCDecryptionError)
+
+      if (!canRetry) throw err
+
+      // The wallet mis-advertised its encryption: flip, clear the cached
+      // conversation key, and try exactly once more.
+      this._flipEncryption(err instanceof EncryptionMismatchError ? err.detected : undefined)
+
+      const result = await this._executeRequestOnce<T>(method, params, opts)
+      this.encryptionConfirmed = true
+      return result
+    }
+  }
+
+  private async _executeRequestOnce<T>(
+    method: string,
+    params: unknown,
+    opts?: { replyTimeout?: number },
+  ): Promise<T> {
     if (!this._connected) {
       throw new NWCConnectionError('Not connected. Call connect() first.')
     }
+
+    const requestScheme = this.encryptionType
 
     return new Promise<T>(async (resolve, reject) => {
       try {
@@ -401,18 +530,25 @@ export class NWC {
               sub.close()
 
               try {
-                const decryptedContent = await this._decrypt(responseEvent.content)
-                const response = JSON.parse(decryptedContent)
+                const { plaintext, scheme } = this._decryptWithScheme(responseEvent.content)
+                const response = JSON.parse(plaintext)
 
                 if (response.result) {
+                  // The wallet understood us, whatever scheme it answered in.
                   resolve(response.result as T)
                 } else if (response.error) {
-                  reject(
-                    new NWCWalletError(
-                      response.error.message || 'Unknown wallet error',
-                      response.error.code || 'INTERNAL',
-                    ),
-                  )
+                  // An error that came back in the *other* scheme means the
+                  // wallet almost certainly could not read our request.
+                  if (requestScheme && scheme !== requestScheme) {
+                    reject(new EncryptionMismatchError(scheme))
+                  } else {
+                    reject(
+                      new NWCWalletError(
+                        response.error.message || 'Unknown wallet error',
+                        response.error.code || 'INTERNAL',
+                      ),
+                    )
+                  }
                 } else {
                   reject(new NWCError('Unexpected response format', 'INTERNAL'))
                 }
@@ -459,15 +595,12 @@ export class NWC {
   }
 
   private _startNotificationSub(): void {
-    if (!this.encryptionType) return
-
-    const notificationKind =
-      this.encryptionType === 'nip04' ? NWC_NOTIFICATION_NIP04_KIND : NWC_NOTIFICATION_NIP44_KIND
-
+    // Subscribe to both notification kinds and decrypt by ciphertext shape, so
+    // notifications keep working regardless of which scheme the wallet uses.
     this.notificationSub = this.pool.subscribe(
       this.relayUrls,
       {
-        kinds: [notificationKind],
+        kinds: [NWC_NOTIFICATION_NIP04_KIND, NWC_NOTIFICATION_NIP44_KIND],
         authors: [this.walletPubkey],
         '#p': [this.publicKey],
       } as Filter,

@@ -26,7 +26,7 @@ Existing NWC libraries tend to be either:
 
 - **Single connection string** - pass in a `nostr+walletconnect://` URI and start making calls
 - **Full NIP-47 coverage** - every method (`pay_invoice`, `get_balance`, `make_invoice`, `list_transactions`, etc.)
-- **Auto-encryption** - detects whether the wallet supports NIP-04 or NIP-44 and handles it transparently
+- **Auto-encryption** - detects whether the wallet supports NIP-04 or NIP-44 and handles it transparently, treating the advertised scheme as a hint: if a wallet mis-advertises, the client flips schemes, retries once, and pins whatever works
 - **Typed errors** - specific error classes for timeouts, connection failures, wallet errors, and decryption issues
 - **Zero framework deps** - built on audited noble cryptography libraries only
 - **ESM-only** - tree-shakeable, modern JavaScript
@@ -879,8 +879,32 @@ Parses an NWC connection string and creates a client instance.
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `connectionString` | `string` | NWC URI (`nostr+walletconnect://...` or `nostrwalletconnect://...`) |
+| `opts.negotiateEncryption` | `boolean?` | Recover from a mis-advertised encryption scheme. Default `true` |
 
 **Throws:** `NWCError` with code `'INVALID_CONNECTION_STRING'` if the URI can't be parsed.
+
+## Encryption Negotiation
+
+Some wallets advertise `nip44` in their kind 13194 info event but only speak `nip04` (Rizful is a live example). The advertised scheme is a HINT, not a promise.
+
+When a request fails in a way that shows the wallet could not read it, the client flips schemes, clears the cached NIP-44 conversation key, retries ONCE, and pins whatever round-trips. Two signals trigger the flip and nothing else:
+
+1. the response decrypts in neither scheme;
+2. the response decrypts to an ERROR in a different scheme than the request was sent in.
+
+A successful result is accepted whatever scheme it arrived in. Genuine wallet errors, timeouts and relay failures propagate unchanged.
+
+```ts
+const nwc = new NWC(connectionString)
+await nwc.connect()                 // or connect({ verifyEncryption: true })
+nwc.encryption                      // 'nip44' - advertised
+await nwc.getInfo()                 // flips transparently if the wallet lied
+nwc.encryption                      // 'nip04' - pinned
+nwc.encryptionVerified              // true
+await nwc.verifyEncryption()        // prove it explicitly with one get_info
+```
+
+Notification subscriptions listen on BOTH kinds (23196 and 23197) and decrypt by ciphertext shape, so they survive a flip.
 
 The connection string format is:
 
@@ -1035,6 +1059,7 @@ Subscribes to NIP-47 wallet notifications (kind `23196` for NIP-04, kind `23197`
 
 - Automatically selects the correct notification event kind based on encryption type
 - Filters notifications by type if `notificationTypes` is provided
+- Subscribes to both notification kinds (23196 / 23197) and decrypts by ciphertext shape
 - Auto-reconnects with a 1-second delay if the relay connection closes
 
 | Parameter | Type | Description |
@@ -1636,8 +1661,32 @@ import { Relay } from 'nostr-core'
 ```ts
 new Relay(url: string, opts?: {
   websocketImplementation?: typeof WebSocket
+  reconnect?: ReconnectOptions | false
 })
 ```
+
+## Auto-Reconnect
+
+Enabled by default. When an established socket closes unexpectedly (sleep, NAT/proxy idle timeout, relay restart), the relay retries with exponential backoff and REPLAYS its open REQs — `openSubs` is deliberately NOT cleared, because those filters are exactly what has to be replayed.
+
+```ts
+type ReconnectOptions = {
+  enabled?: boolean            // default true
+  initialDelay?: number        // default 1000 ms
+  maxDelay?: number            // default 30000 ms
+  factor?: number              // default 2
+  maxAttempts?: number         // default Infinity
+  jitter?: number              // default 0.3
+  connectionTimeout?: number   // default 5000 ms per retry
+}
+```
+
+- In-flight publishes still reject immediately — a dead socket can never answer them.
+- An INITIAL `connect()` failure does not trigger retries; the promise rejects as before.
+- `close()` is explicit and final: it cancels any pending retry.
+- `subscribe()` during a pending retry queues the REQ instead of throwing.
+- A replayed REQ is a fresh REQ, so the relay resends matching history and `oneose` fires again — DEDUPE BY EVENT ID.
+- Browsers cannot send WS ping frames, so reconnect-on-close is the standard remedy.
 
 ## Properties
 
@@ -1645,9 +1694,13 @@ new Relay(url: string, opts?: {
 |----------|------|---------|-------------|
 | `url` | `string` | - | Normalized relay URL (readonly) |
 | `connected` | `boolean` | - | Whether WebSocket is active (getter) |
+| `reconnecting` | `boolean` | - | Whether a retry is pending (getter) |
 | `eoseTimeout` | `number` | `4400` | EOSE timeout in ms |
 | `publishTimeout` | `number` | `4400` | Publish OK timeout in ms |
-| `openSubs` | `Map<string, Subscription>` | - | Active subscriptions |
+| `openSubs` | `Map<string, Subscription>` | - | Active subscriptions, preserved across drops |
+| `ondisconnect` | `((reason: string) => void)?` | - | Established connection dropped, before a retry |
+| `onreconnect` | `(() => void)?` | - | Reconnected and REQs replayed |
+| `onreconnectfailed` | `((err: Error) => void)?` | - | Gave up after `maxAttempts` |
 
 ## Methods
 
@@ -1686,6 +1739,8 @@ relay.close(): void
 | `onevent` | `(evt: NostrEvent) => void` | Event callback |
 | `oneose` | `(() => void)?` | EOSE callback |
 | `onclose` | `((reason: string) => void)?` | Close callback |
+
+`subscription.reset()` clears the per-connection EOSE state so the sub can be re-fired on a fresh socket; the relay calls it during a reconnect.
 
 ### SubscriptionParams
 
@@ -3595,4 +3650,432 @@ Cryptographically secure random bytes.
 ```ts
 const utf8Encoder: TextEncoder
 const utf8Decoder: TextDecoder
+```
+
+---
+
+# API Reference: NIP-61 (Nutzaps)
+
+P2PK-locked Cashu payments where the payment itself is the receipt. Builds on NIP-60 for the wallet side.
+
+## Import
+
+```ts
+import { nip61 } from 'nostr-core'
+```
+
+## Event Kinds
+
+| Constant | Value | Description |
+|----------|-------|-------------|
+| `NUTZAP_INFO_KIND` | `10019` | How to send this user ecash (replaceable) |
+| `NUTZAP_KIND` | `9321` | The nutzap itself |
+| `NUTZAP_HISTORY_KIND` | `7376` | NIP-60 history, reused for redemptions |
+
+## Functions
+
+- `createNutzapInfoEvent({ relays, mints, p2pkPubkey }, sk)` / `...Template` — Kind 10019
+- `parseNutzapInfo(event)` — `{ relays, mints: [{ url, units }], p2pkPubkey }`
+- `createNutzapEvent({ proofs, mint, recipient, unit?, eventId?, eventKind?, content? }, sk)` / `...Template` — Kind 9321
+- `parseNutzap(event)` — `ParsedNutzap` incl. `sender`, `id`, `created_at`; malformed proofs skipped
+- `getNutzapAmount(nutzap)` — Sum the proofs
+- `verifyNutzap(nutzap, info, recipientPubkey?)` — `{ valid, errors[] }`: mint listed, proofs P2PK-locked to the published key, correct p tag
+- `toP2PKLockKey(pubkey)` / `fromP2PKLockKey(key)` / `isSameLockKey(a, b)` — 33-byte `02` prefix conversion
+- `parseP2PKSecret(secret)` / `getProofLockKey(proof)` — Read the NUT-10 spending condition
+- `createNutzapRedemptionEvent({ nutzapEventId, senderPubkey, amount, createdTokenEventId? }, sk)` — Kind 7376
+- `parseNutzapRedemption(event, sk)` / `getRedeemedNutzapIds(events)` — Track what has been claimed
+- `getNutzapFilter(pubkey, mints, since?)` / `getNutzapInfoFilter(pubkeys)` / `getNutzapRedemptionFilter(pubkey)`
+
+## Rules
+
+- The P2PK key is the NIP-60 wallet `privkey`, NEVER the Nostr identity key.
+- Clients MUST prefix the locked key with `02` — `toP2PKLockKey` does this.
+- Always narrow the receive filter by mint (`#u`) so the client never touches a mint the user did not signal.
+- Publish redemption events to the SENDER's NIP-65 read relays.
+- DLEQ (NUT-12) verification needs the mint keyset — do it with a Cashu library.
+
+## Example
+
+```ts
+import { nip61 } from 'nostr-core'
+
+// Bob advertises where and how to pay him
+const info = nip61.createNutzapInfoEvent({
+  relays: ['wss://relay1'],
+  mints: [{ url: 'https://stablenut.umint.cash', units: ['sat'] }],
+  p2pkPubkey: bobWalletPubkey,
+}, bobSk)
+
+// Alice nutzaps him
+const nutzap = nip61.createNutzapEvent({
+  proofs,                                  // P2PK-locked at that mint
+  mint: 'https://stablenut.umint.cash',
+  recipient: bobPubkey,
+  eventId: likedEventId,
+  eventKind: 1,
+  content: 'zap!',
+}, aliceSk)
+
+// Bob checks it before swapping
+const parsed = nip61.parseNutzap(nutzap)
+const { valid, errors } = nip61.verifyNutzap(parsed, nip61.parseNutzapInfo(info), bobPubkey)
+```
+
+---
+
+# API Reference: NIP-78 (Arbitrary Custom App Data)
+
+Relays as a personal database. Kind 30078 is addressable and keyed by a `d` tag naming your app or a context within it; kind 78 is a regular event for many entries per category.
+
+## Import
+
+```ts
+import { nip78 } from 'nostr-core'
+```
+
+## Event Kinds
+
+| Constant | Value | Description |
+|----------|-------|-------------|
+| `APP_DATA_KIND` | `30078` | Addressable app data |
+| `APP_EVENT_KIND` | `78` | Regular app event |
+
+## Functions
+
+- `createAppDataEvent({ identifier, content?, tags? }, sk)` / `...Template` — Kind 30078
+- `parseAppData(event)` — `{ identifier, content, tags, pubkey, created_at }`
+- `createAppDataJsonEvent(identifier, value, sk, tags?)` / `parseAppDataJson(event)` — JSON payloads
+- `createEncryptedAppDataEvent(data, sk)` / `parseEncryptedAppData(event, sk)` — NIP-44 encrypted to self
+- `createEncryptedAppDataJsonEvent(identifier, value, sk, tags?)` / `parseEncryptedAppDataJson(event, sk)`
+- `createAppEvent(content, sk, tags?)` / `...Template` — Kind 78
+- `buildAppDataAddress(pubkey, identifier)` / `getAppDataFilter(pubkey, identifier?)`
+
+## Rules
+
+- The `d` tag is NEVER encrypted — keep secrets out of the identifier.
+- Conventional `d` format: `<app-name>/<context>`.
+
+## Example
+
+```ts
+import { nip78 } from 'nostr-core'
+
+const event = nip78.createEncryptedAppDataJsonEvent(
+  'my-app/prefs',
+  { theme: 'dark', mutedUsers: [] },
+  sk,
+)
+// event.content is opaque; event.tags is [['d','my-app/prefs']]
+
+const prefs = nip78.parseEncryptedAppDataJson(event, sk)
+```
+
+---
+
+# API Reference: NIP-87 (Cashu / Fedimint Discoverability)
+
+Mints announce themselves, users recommend the ones they trust, and other users find a mint through their own social graph.
+
+## Import
+
+```ts
+import { nip87 } from 'nostr-core'
+```
+
+## Event Kinds
+
+| Constant | Value | Description |
+|----------|-------|-------------|
+| `MINT_RECOMMENDATION_KIND` | `38000` | A user endorsing a mint (addressable) |
+| `CASHU_MINT_KIND` | `38172` | Cashu mint announcement |
+| `FEDIMINT_KIND` | `38173` | Fedimint announcement |
+
+## Functions
+
+- `createCashuMintAnnouncement({ identifier, urls, nuts?, network?, content? }, sk)` / `...Template` — Kind 38172; `d` is the mint pubkey from `/v1/info`
+- `createFedimintAnnouncement({ identifier, inviteCodes, modules?, network? }, sk)` / `...Template` — Kind 38173; `d` is the federation id
+- `createMintRecommendation({ identifier, recommendedKind, connections?, announcements?, content? }, sk)` / `...Template` — Kind 38000
+- `parseCashuMintAnnouncement` / `parseFedimintAnnouncement` / `parseMintRecommendation`
+- `buildMintAnnouncementAddress(kind, pubkey, identifier)`
+- `getMintRecommendationFilter({ authors?, kind?, identifiers? })` / `getMintAnnouncementFilter({ kinds?, identifiers?, authors? })`
+- `tallyRecommendations(events)` — `Map<identifier, distinct endorsing pubkeys>`; newest event per (author, identifier) only
+- `isMintDiscoveryEvent(event)`
+
+## Rules
+
+- Query recommendations from the user's follows. Querying announcements directly bypasses the web of trust and can point users at a malicious mint.
+- The relay hint on an `a` tag disambiguates duplicate announcements claiming the same mint.
+
+## Example
+
+```ts
+import { nip87 } from 'nostr-core'
+
+const recs = await pool.querySync(relays, nip87.getMintRecommendationFilter({
+  authors: followList,
+  kind: 38172,
+}))
+
+const ranked = [...nip87.tallyRecommendations(recs)].sort((a, b) => b[1] - a[1])
+```
+
+---
+
+# API Reference: Schema (Runtime Validation)
+
+Runtime validation for untrusted Nostr data. TypeScript types say nothing about what a relay actually sent you.
+
+## Import
+
+```ts
+import { schema } from 'nostr-core'
+// or the subpath
+import * as schema from 'nostr-core/schema'
+```
+
+## Validator Interface
+
+Every validator exposes:
+
+- `is(value)` — type guard, for `if` checks
+- `safeParse(value)` — `{ ok: true, value } | { ok: false, issues: [{ path, message }] }`
+- `parse(value)` — returns the value or throws `SchemaError` (which carries `.issues`)
+
+## Validators
+
+- `schema.nostrEvent` — structural: every field present and correctly typed
+- `schema.verifiedNostrEvent` — structural + id hash + schnorr signature, ALWAYS uncached
+- `schema.eventTemplate` — unsigned template
+- `schema.filter` — REQ filter; rejects unknown keys, catching typos like `kind` for `kinds`
+- `schema.relayMessage` / `schema.clientMessage` — wire frames (EVENT, OK, EOSE, CLOSED, NOTICE, AUTH, REQ, CLOSE, COUNT)
+- `schema.pubkey` / `eventId` / `signature` / `hex32` / `relayUrl` / `nip05Address` / `tags`
+
+## Combinators
+
+- `schema.json(inner)` — JSON-parse a string then validate; reports an issue instead of throwing
+- `schema.arrayOf(inner)`, `schema.optional(inner)`
+- `schema.defineValidator(name, check)` — build your own in the same shape
+
+## Rules
+
+- Validate at the edges: relay frames, client input, external APIs.
+- `verifiedNostrEvent` deliberately ignores the cached `verifiedSymbol`, because object spread copies it and a tampered `{...signed, content:'x'}` would otherwise pass.
+
+## Example
+
+```ts
+import { schema } from 'nostr-core'
+
+const frame = schema.json(schema.clientMessage)
+
+const parsed = frame.safeParse(raw)
+if (!parsed.ok) return send(['NOTICE', `invalid: ${parsed.issues[0].message}`])
+
+if (parsed.value[0] === 'EVENT' && !schema.verifiedNostrEvent.is(parsed.value[1])) {
+  return send(['OK', parsed.value[1].id, false, 'invalid: bad signature'])
+}
+```
+
+---
+
+# API Reference: Policy (Composable Event Checks)
+
+Each policy answers one question about one event; combine them with `pipe` instead of growing a bespoke `shouldAccept()`.
+
+## Import
+
+```ts
+import { policy } from 'nostr-core'
+// or the subpath
+import * as policy from 'nostr-core/policy'
+```
+
+## Interface
+
+```ts
+type Policy = { name: string; check(event): PolicyResult | Promise<PolicyResult> }
+type PolicyResult = { accepted: boolean; policy?: string; reason?: string }
+```
+
+## Combinators
+
+- `pipe(policies)` — in order, first rejection wins
+- `anyOf(policies)` — accept if any accepts
+- `not(policy)`
+- `customPolicy(name, predicate, reason?)` — predicate may be async
+
+## Built-ins
+
+- `noDuplicates({ max? })` — in-memory LRU of seen ids
+- `requirePow(difficulty, { requireCommitment? })` — NIP-13; also checks the nonce commitment by default
+- `blockKeywords(keywords, { caseSensitive?, includeTags? })` — strings or RegExps
+- `filterPolicy(filters)` / `rejectFilterPolicy(filters)`
+- `kindAllowList(kinds)` / `kindDenyList(kinds)`
+- `pubkeyAllowList(pubkeys)` / `pubkeyDenyList(pubkeys)`
+- `sizeLimit({ maxContentLength?, maxTags?, maxTagLength? })`
+- `rateLimit({ max, windowMs, key? })` — per-author by default
+- `requireValidSignature()` — verifies from scratch, ignoring any cached flag
+- `createdAtPolicy({ maxPastSeconds?, maxFutureSeconds? })`
+- `notExpired()` — NIP-40
+
+## Rules
+
+- Stateful policies (`noDuplicates`, `rateLimit`) must be built ONCE and reused.
+- Order matters: cheap checks first.
+
+## Example
+
+```ts
+import { policy } from 'nostr-core'
+
+const ingress = policy.pipe([
+  policy.requireValidSignature(),
+  policy.notExpired(),
+  policy.sizeLimit({ maxContentLength: 64_000 }),
+  policy.noDuplicates(),
+  policy.rateLimit({ max: 20, windowMs: 60_000 }),
+  policy.blockKeywords(['spam', /free\s+bitcoin/i]),
+])
+
+const result = await ingress.check(event)
+if (!result.accepted) send(['OK', event.id, false, result.reason])
+```
+
+---
+
+# API Reference: Mail over Nostr (EXPERIMENTAL)
+
+Email-shaped messaging on NIP-59 gift wrap: structured To/Cc/Bcc, threading, encrypted attachments. NIP-17 cannot express recipient roles, which is why this is a separate module.
+
+**No ratified NIP exists for mail. `MAIL_KIND` (1314) is PROVISIONAL and overridable per call.** It deliberately avoids 1301, which NIP-101e already uses for Workout Record.
+
+## Import
+
+```ts
+import { mail } from 'nostr-core'
+// or the subpath
+import * as mail from 'nostr-core/mail'
+```
+
+## Envelope
+
+```
+kind 1059 gift wrap  ->  kind 13 seal  ->  kind 1314 mail rumor
+```
+
+## Functions
+
+- `createMailMessage({ subject, body, format?, to, cc?, bcc?, attachments?, thread?, replyTo? }, sk, { selfCopy? })` — Returns `MailCopy[]`: `{ recipient, role, rumor, wrap }` per recipient
+- `createMailTemplate(mail, visibleBcc?)` — The inner rumor template
+- `parseMailMessage(wrap, sk, { kind? })` / `parseMailRumor(rumor)` — `ParsedMail`
+- `createReply(original, { body, format?, attachments?, replyAll? }, replierPubkey)`
+- `getThreadId(parsed)` — the `thread` tag, or the message's own id when it is the root
+- `encryptAttachment(data)` / `encryptAttachmentWithKey(data, keyHex)` / `decryptAttachment(ciphertext, keyHex)` — AES-256-GCM, IV prepended
+- `uploadMailAttachment({ data, name, mime }, server, sk)` / `downloadMailAttachment(attachment)` — Blossom
+- `getMailFilter(pubkey, since?)` / `getDeliveryRelayFilter(pubkeys)` / `parseDeliveryRelays(event)`
+
+## Bcc Privacy
+
+| Copy | `p` tags | `bcc` array |
+|------|----------|-------------|
+| To / Cc recipients | To + Cc | empty |
+| Each Bcc recipient | To + Cc | only themselves |
+| Sender's own copy | To + Cc | the full list |
+
+Blind recipients are never `p`-tagged and each gets their OWN rumor with a distinct id. Neither a recipient nor a relay can reconstruct the blind list.
+
+## Example
+
+```ts
+import { mail } from 'nostr-core'
+
+const copies = mail.createMailMessage({
+  subject: 'Q3 planning',
+  body: 'Agenda attached.',
+  to: [bobPubkey],
+  cc: [carolPubkey],
+  bcc: [legalPubkey],
+}, aliceSk)
+
+for (const copy of copies) {
+  await pool.publish(await dmRelaysFor(copy.recipient), copy.wrap)
+}
+
+// Receiving
+pool.subscribe(myRelays, mail.getMailFilter(myPubkey), {
+  onevent(wrap) {
+    const message = mail.parseMailMessage(wrap, mySk)
+    console.log(message.subject, message.sender, mail.getThreadId(message))
+  },
+})
+```
+
+---
+
+# API Reference: Appointment Scheduling (EXPERIMENTAL)
+
+Calendly-style scheduling with a DST-correct slot generator.
+
+**No NIP standardizes this. Only `AVAILABILITY_KIND` (31926) is new and PROVISIONAL** — bookings and cancellations deliberately reuse ratified NIP-52 kinds so ordinary clients can read them.
+
+## Import
+
+```ts
+import { scheduling } from 'nostr-core'
+// or the subpath
+import * as scheduling from 'nostr-core/scheduling'
+```
+
+## Model
+
+| Piece | Kind | Transport |
+|-------|------|-----------|
+| Availability page | `31926` (provisional) | public, addressable |
+| Booking request | `31923` NIP-52 time-based calendar event | NIP-59 gift wrap |
+| Cancellation | `31925` NIP-52 RSVP, `status: 'declined'` | NIP-59 gift wrap |
+
+## Functions
+
+- `createAvailabilityEvent({ identifier, title, timezone, durationMinutes, rules, intervalMinutes?, bufferBeforeMinutes?, bufferAfterMinutes?, minNoticeMinutes?, maxAdvanceDays? }, sk)` / `...Template` / `parseAvailability(event)`
+- `buildAvailabilityAddress(pubkey, identifier, kind?)` / `getAvailabilityFilter(pubkey, { identifier?, kind? })`
+- `generateSlots(availability, { from, to, busy?, now? })` — `Slot[]` of `{ start, end }` unix seconds
+- `isSlotAvailable(availability, slot, { busy?, now? })`
+- `bookingsToBusy(bookings)`
+- `createBookingRequest(booking, bookerSk, { selfCopy? })` — `{ rumor, wraps: [{ recipient, wrap }] }`
+- `parseBookingRequest(wrap, sk)` / `buildBookingAddress(bookerPubkey, identifier)`
+- `createBookingCancellation(cancellation, sk, { selfCopy? })` / `parseBookingCancellation(wrap, sk)`
+
+## Rules
+
+- Rules are wall-clock local times in an IANA zone: a `09:00` rule stays 09:00 local across a DST transition, so the UTC instant shifts. A time that does not exist on a spring-forward date yields no slot.
+- Weekday is `0-6` with Sunday = 0, matching `Date#getUTCDay`.
+- ALWAYS re-check a requested slot host-side with `isSlotAvailable` — a booker can put any times they like in a request.
+
+## Example
+
+```ts
+import { scheduling } from 'nostr-core'
+
+const availability = {
+  identifier: 'intro-call',
+  title: '30 min intro',
+  timezone: 'Europe/Berlin',
+  durationMinutes: 30,
+  rules: [{ weekday: 1, start: '09:00', end: '12:00' }],
+  minNoticeMinutes: 120,
+}
+
+await pool.publish(relays, scheduling.createAvailabilityEvent(availability, hostSk))
+
+const now = Math.floor(Date.now() / 1000)
+const slots = scheduling.generateSlots(availability, { from: now, to: now + 14 * 86400 })
+
+const { wraps } = scheduling.createBookingRequest({
+  identifier: crypto.randomUUID(),
+  availabilityAddress: scheduling.buildAvailabilityAddress(hostPubkey, 'intro-call'),
+  host: hostPubkey,
+  start: slots[0].start,
+  end: slots[0].end,
+  title: '30 min intro',
+}, bookerSk)
 ```

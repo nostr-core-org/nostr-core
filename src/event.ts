@@ -65,21 +65,30 @@ export function finalizeEvent(t: EventTemplate, secretKey: Uint8Array): Verified
   return event
 }
 
+/**
+ * Verify an event's id and signature from scratch.
+ *
+ * Unlike {@link verifyEvent} this consults no cache and writes none, so it is
+ * the right choice for validating untrusted input. `verifiedSymbol` is an own
+ * enumerable symbol property, which means object spread copies it: a tampered
+ * `{ ...signedEvent, content: 'changed' }` would otherwise inherit the original
+ * event's "already verified" flag.
+ */
+export function verifyEventSignature(event: NostrEvent): boolean {
+  const hash = getEventHash(event)
+  if (hash !== event.id) return false
+
+  try {
+    return schnorr.verify(hexToBytes(event.sig), hexToBytes(hash), hexToBytes(event.pubkey))
+  } catch {
+    return false
+  }
+}
+
 export function verifyEvent(event: NostrEvent): event is VerifiedEvent {
   if (typeof event[verifiedSymbol] === 'boolean') return event[verifiedSymbol]
 
-  const hash = getEventHash(event)
-  if (hash !== event.id) {
-    event[verifiedSymbol] = false
-    return false
-  }
-
-  try {
-    const valid = schnorr.verify(hexToBytes(event.sig), hexToBytes(hash), hexToBytes(event.pubkey))
-    event[verifiedSymbol] = valid
-    return valid
-  } catch {
-    event[verifiedSymbol] = false
-    return false
-  }
+  const valid = verifyEventSignature(event)
+  event[verifiedSymbol] = valid
+  return valid
 }

@@ -1,4 +1,4 @@
-import { Relay, Subscription, type SubscriptionParams } from './relay.js'
+import { Relay, Subscription, type ReconnectOptions, type SubscriptionParams } from './relay.js'
 import type { NostrEvent } from './event.js'
 import type { Filter } from './filter.js'
 import { normalizeURL } from './utils.js'
@@ -15,17 +15,24 @@ export class RelayPool {
   private relays = new Map<string, Relay>()
   private maxWaitForConnection: number
   private _WebSocket?: typeof WebSocket
+  private _reconnect?: ReconnectOptions | false
 
-  constructor(opts?: { websocketImplementation?: typeof WebSocket; maxWaitForConnection?: number }) {
+  constructor(opts?: {
+    websocketImplementation?: typeof WebSocket
+    maxWaitForConnection?: number
+    /** Auto-reconnect settings applied to every relay in the pool. Pass `false` to disable. */
+    reconnect?: ReconnectOptions | false
+  }) {
     this._WebSocket = opts?.websocketImplementation
     this.maxWaitForConnection = opts?.maxWaitForConnection || 3000
+    this._reconnect = opts?.reconnect
   }
 
   async ensureRelay(url: string, opts?: { connectionTimeout?: number }): Promise<Relay> {
     url = normalizeURL(url)
     let relay = this.relays.get(url)
     if (!relay) {
-      relay = new Relay(url, { websocketImplementation: this._WebSocket })
+      relay = new Relay(url, { websocketImplementation: this._WebSocket, reconnect: this._reconnect })
       relay.publishTimeout = 5000
       this.relays.set(url, relay)
     }
@@ -126,6 +133,14 @@ export class RelayPool {
       this.relays.get(url)?.close()
       this.relays.delete(url)
     })
+  }
+
+  /**
+   * Get the pooled {@link Relay} for a URL, if one has been created.
+   * Useful for attaching `ondisconnect` / `onreconnect` handlers.
+   */
+  getRelay(url: string): Relay | undefined {
+    return this.relays.get(normalizeURL(url))
   }
 
   listConnectionStatus(): Map<string, boolean> {

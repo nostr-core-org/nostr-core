@@ -1,5 +1,6 @@
 // Main API
 export { NWC } from './nwc.js'
+export type { NWCOptions } from './nwc.js'
 
 // Types
 export type {
@@ -58,6 +59,7 @@ export {
   parseSuccessAction,
   decryptAesSuccessAction,
   verifyPayment,
+  validateVerifyUrl,
   LnurlError,
 } from './lnurl.js'
 export type {
@@ -70,6 +72,7 @@ export type {
   WithdrawRequestResponse,
   VerifyResponse as LnurlVerifyResponse,
   RequestInvoiceOptions,
+  SubmitWithdrawOptions,
 } from './lnurl.js'
 
 // Fiat Conversion
@@ -79,7 +82,7 @@ export { getExchangeRate, fiatToSats, satsToFiat } from './fiat.js'
 export { generateSecretKey, getPublicKey } from './crypto.js'
 
 // Event system
-export { finalizeEvent, verifyEvent, getEventHash, serializeEvent, validateEvent, verifiedSymbol } from './event.js'
+export { finalizeEvent, verifyEvent, verifyEventSignature, getEventHash, serializeEvent, validateEvent, verifiedSymbol } from './event.js'
 export type { NostrEvent, EventTemplate, UnsignedEvent, VerifiedEvent } from './event.js'
 
 // Filters
@@ -123,7 +126,10 @@ export * as nip52 from './nip52.js'
 export * as nip58 from './nip58.js'
 export * as nip59 from './nip59.js'
 export * as nip60 from './nip60.js'
+export * as nip61 from './nip61.js'
 export * as nip65 from './nip65.js'
+export * as nip78 from './nip78.js'
+export * as nip87 from './nip87.js'
 export * as nip68 from './nip68.js'
 export * as nip69 from './nip69.js'
 export * as nip75 from './nip75.js'
@@ -139,7 +145,10 @@ export type { Nip07Extension } from './nip07.js'
 
 // NIP-46
 export { NostrConnect, parseConnectionURI, Nip46Error, Nip46TimeoutError, Nip46ConnectionError, Nip46RemoteError } from './nip46.js'
-export type { Nip46ConnectionOptions, Nip46Method, Nip46AppMetadata } from './nip46.js'
+export type {
+  Nip46ConnectionOptions, Nip46Method, Nip46AppMetadata,
+  Nip46Encryption, Nip46EncryptionMode,
+} from './nip46.js'
 
 // NIP-59
 export { createRumor, createSeal, createWrap, unwrap } from './nip59.js'
@@ -232,11 +241,15 @@ export {
   createTimeBasedCalendarEventTemplate, createTimeBasedCalendarEvent, parseTimeBasedCalendarEvent,
   createCalendarTemplate, createCalendarEvent, parseCalendar,
   createCalendarEventRSVPTemplate, createCalendarEventRSVP, parseCalendarEventRSVP,
-  buildCalendarEventAddress, isCalendarEvent,
+  buildCalendarEventAddress, buildAddressableAddress, parseAddressableAddress,
+  calendarEventDays, isCalendarEvent,
+  DATE_BASED_CALENDAR_EVENT_KIND, TIME_BASED_CALENDAR_EVENT_KIND,
+  CALENDAR_KIND, CALENDAR_EVENT_RSVP_KIND,
 } from './nip52.js'
 export type {
   DateBasedCalendarEvent, TimeBasedCalendarEvent, CalendarEventParticipant,
   Calendar, CalendarEventRSVP, RSVPStatus, FreeBusy,
+  CalendarKind, CalendarReference, CalendarEventReference,
 } from './nip52.js'
 
 // NIP-57
@@ -270,6 +283,91 @@ export {
 export type {
   CashuProof, CashuToken, CashuWallet, CashuHistory, CashuHistoryRef, CashuQuote,
 } from './nip60.js'
+
+// NIP-61 (Nutzaps)
+export {
+  createNutzapInfoTemplate, createNutzapInfoEvent, parseNutzapInfo,
+  createNutzapTemplate, createNutzapEvent, parseNutzap, getNutzapAmount, verifyNutzap,
+  createNutzapRedemptionTemplate, createNutzapRedemptionEvent, parseNutzapRedemption,
+  getRedeemedNutzapIds,
+  toP2PKLockKey, fromP2PKLockKey, isSameLockKey, parseP2PKSecret, getProofLockKey,
+  getNutzapFilter, getNutzapInfoFilter, getNutzapRedemptionFilter,
+  NUTZAP_INFO_KIND, NUTZAP_KIND, NUTZAP_HISTORY_KIND, DEFAULT_NUTZAP_UNIT,
+} from './nip61.js'
+export type {
+  Nutzap, ParsedNutzap, NutzapInfo, NutzapMint, NutzapRedemption,
+  NutzapVerification, P2PKSecret,
+} from './nip61.js'
+
+// NIP-78 (Arbitrary Custom App Data)
+export {
+  createAppDataTemplate, createAppDataEvent, parseAppData,
+  createAppDataJsonTemplate, createAppDataJsonEvent, parseAppDataJson,
+  createEncryptedAppDataTemplate, createEncryptedAppDataEvent, parseEncryptedAppData,
+  createEncryptedAppDataJsonEvent, parseEncryptedAppDataJson,
+  createAppEventTemplate, createAppEvent,
+  buildAppDataAddress, getAppDataFilter,
+  APP_DATA_KIND, APP_EVENT_KIND,
+} from './nip78.js'
+export type { AppData, ParsedAppData } from './nip78.js'
+
+// NIP-87 (Cashu / Fedimint discoverability)
+export {
+  createMintRecommendationTemplate, createMintRecommendation, parseMintRecommendation,
+  createCashuMintAnnouncementTemplate, createCashuMintAnnouncement, parseCashuMintAnnouncement,
+  createFedimintAnnouncementTemplate, createFedimintAnnouncement, parseFedimintAnnouncement,
+  buildMintAnnouncementAddress, getMintRecommendationFilter, getMintAnnouncementFilter,
+  tallyRecommendations, isMintDiscoveryEvent,
+  MINT_RECOMMENDATION_KIND, CASHU_MINT_KIND, FEDIMINT_KIND,
+} from './nip87.js'
+export type {
+  MintRecommendation, CashuMintAnnouncement, FedimintAnnouncement,
+  MintAnnouncementRef, MintConnection, MintAnnouncementKind, MintNetwork,
+} from './nip87.js'
+
+// Schema - runtime validation for untrusted Nostr data.
+// The validators live behind the `schema` namespace (or the `nostr-core/schema`
+// subpath) so generic names like `filter` and `optional` stay out of the flat
+// export surface: `schema.nostrEvent.is(value)`.
+export * as schema from './schema.js'
+export { SchemaError } from './schema.js'
+export type { Validator, ValidationResult, ValidationIssue, RelayMessage, ClientMessage } from './schema.js'
+
+// Policy - composable event checks. Namespaced for the same reason:
+// `policy.pipe([policy.noDuplicates(), policy.requirePow(20)])`.
+export * as policy from './policy.js'
+export type { Policy, PolicyResult } from './policy.js'
+
+// Mail over Nostr (experimental)
+export * as mail from './mail.js'
+export {
+  createMailTemplate, createMailMessage, parseMailMessage, parseMailRumor,
+  createReply, getThreadId,
+  encryptAttachment, encryptAttachmentWithKey, decryptAttachment,
+  uploadMailAttachment, downloadMailAttachment,
+  getMailFilter, getDeliveryRelayFilter, parseDeliveryRelays,
+  MAIL_KIND, DM_RELAY_LIST_KIND,
+} from './mail.js'
+export type {
+  MailMessage, ParsedMail, MailCopy, MailContent, MailAttachment,
+  MailFormat, MailRecipientRole,
+} from './mail.js'
+
+// Appointment scheduling (experimental, built on NIP-52 + NIP-59)
+export * as scheduling from './scheduling.js'
+export {
+  createAvailabilityTemplate, createAvailabilityEvent, parseAvailability,
+  buildAvailabilityAddress, getAvailabilityFilter,
+  generateSlots, isSlotAvailable, bookingsToBusy,
+  createBookingRequestTemplate, createBookingRequest, parseBookingRequest, buildBookingAddress,
+  createBookingCancellationTemplate, createBookingCancellation, parseBookingCancellation,
+  AVAILABILITY_KIND,
+} from './scheduling.js'
+export type {
+  Availability, AvailabilityRule, Weekday, Slot, BusyInterval,
+  BookingRequest, ParsedBookingRequest, BookingCancellation, ParsedBookingCancellation,
+  GenerateSlotsOptions,
+} from './scheduling.js'
 
 // NIP-75
 export {
@@ -328,7 +426,7 @@ export type { P2POrder, OrderType, OrderStatus } from './nip69.js'
 
 // Networking
 export { Relay, Subscription } from './relay.js'
-export type { SubscriptionParams } from './relay.js'
+export type { SubscriptionParams, ReconnectOptions } from './relay.js'
 export { RelayPool } from './pool.js'
 export type { SubCloser, PoolSubscribeParams } from './pool.js'
 
