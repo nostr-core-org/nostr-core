@@ -1,0 +1,111 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="630">
+      <stop offset="0%" stop-color="#0d1117"/>
+      <stop offset="50%" stop-color="#0f1319"/>
+      <stop offset="100%" stop-color="#161b22"/>
+    </linearGradient>
+    <linearGradient id="ring" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f97316"/>
+      <stop offset="50%" stop-color="#FFCA4A"/>
+      <stop offset="100%" stop-color="#897FFF"/>
+    </linearGradient>
+    <linearGradient id="coin" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FFCA4A"/>
+      <stop offset="100%" stop-color="#f97316"/>
+    </linearGradient>
+    <radialGradient id="emblemGlow" cx="893" cy="305" r="230" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#f97316" stop-opacity="0.16"/>
+      <stop offset="60%" stop-color="#897FFF" stop-opacity="0.05"/>
+      <stop offset="100%" stop-color="#0d1117" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="softGlow">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="bigGlow">
+      <feGaussianBlur stdDeviation="18" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <style>
+    text { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; }
+  </style>
+
+  <!-- Background -->
+  <rect width="1200" height="630" rx="10" fill="url(#bg)" stroke="#30363d" stroke-width="1"/>
+
+  <!-- Ambient glow -->
+  <ellipse cx="893" cy="305" rx="330" ry="290" fill="url(#emblemGlow)"/>
+
+  <!-- Terminal chrome -->
+  <rect width="1200" height="38" rx="10" fill="#161b22"/>
+  <rect y="28" width="1200" height="10" fill="#161b22"/>
+  <circle cx="20" cy="19" r="6" fill="#ff5f56"/>
+  <circle cx="40" cy="19" r="6" fill="#ffbd2e"/>
+  <circle cx="60" cy="19" r="6" fill="#27c93f"/>
+
+  <!-- Faint grid lines -->
+  <line x1="620" y1="80" x2="620" y2="560" stroke="#1c2128" stroke-width="1"/>
+  <line x1="780" y1="80" x2="780" y2="560" stroke="#1c2128" stroke-width="1"/>
+  <line x1="940" y1="80" x2="940" y2="560" stroke="#1c2128" stroke-width="1"/>
+  <line x1="1100" y1="80" x2="1100" y2="560" stroke="#1c2128" stroke-width="1"/>
+  <line x1="620" y1="160" x2="1160" y2="160" stroke="#1c2128" stroke-width="1"/>
+  <line x1="620" y1="315" x2="1160" y2="315" stroke="#1c2128" stroke-width="1"/>
+  <line x1="620" y1="470" x2="1160" y2="470" stroke="#1c2128" stroke-width="1"/>
+
+  <!-- Title (left side) -->
+  <text x="60" y="110" font-size="14" fill="#f97316" font-weight="bold">15</text>
+  <text x="60" y="172" font-size="38" fill="#c9d1d9" font-weight="bold">The zap that's</text>
+  <text x="60" y="222" font-size="38" fill="#f97316" font-weight="bold">already money</text>
+  <text x="60" y="292" font-size="16" fill="#8b949e">No invoice. No callback.</text>
+  <text x="60" y="317" font-size="16" fill="#8b949e">No receipt to take on faith.</text>
+  <text x="60" y="342" font-size="16" fill="#8b949e">The event carries the cash.</text>
+
+  <!-- Badges -->
+  <rect x="60" y="386" width="100" height="28" rx="6" fill="#0d1117" stroke="#f97316" stroke-width="1"/>
+  <text x="110" y="405" text-anchor="middle" font-size="11" fill="#f97316" font-weight="bold">kind 9321</text>
+
+  <rect x="170" y="386" width="70" height="28" rx="6" fill="#0d1117" stroke="#FFCA4A" stroke-width="1"/>
+  <text x="205" y="405" text-anchor="middle" font-size="11" fill="#FFCA4A" font-weight="bold">P2PK</text>
+
+  <rect x="250" y="386" width="76" height="28" rx="6" fill="#0d1117" stroke="#897FFF" stroke-width="1"/>
+  <text x="288" y="405" text-anchor="middle" font-size="11" fill="#897FFF" font-weight="bold">Cashu</text>
+
+  <!-- Import hint -->
+  <text x="60" y="462" font-size="12" fill="#484f58">import { nip61 } from 'nostr-core'</text>
+
+  <!-- === COIN + BOLT EMBLEM (right side) === -->
+  <circle cx="893" cy="305" r="172" fill="none" stroke="url(#ring)" stroke-width="1.5" stroke-opacity="0.28" filter="url(#bigGlow)"/>
+  <circle cx="893" cy="305" r="160" fill="none" stroke="url(#ring)" stroke-width="2" stroke-opacity="0.55"/>
+  <circle cx="893" cy="305" r="155" fill="none" stroke="#30363d" stroke-width="0.5"/>
+
+  <!-- Coin -->
+  <circle cx="893" cy="295" r="92" fill="#0d1117" stroke="url(#coin)" stroke-width="5" filter="url(#softGlow)"/>
+  <circle cx="893" cy="295" r="76" fill="none" stroke="#30363d" stroke-width="1.5" stroke-dasharray="4 6"/>
+
+  <!-- Bolt inside the coin -->
+  <path d="M 905 240 L 862 305 L 890 305 L 878 352 L 926 285 L 897 285 Z"
+        fill="url(#coin)" filter="url(#softGlow)"/>
+
+  <!-- Padlock badge: locked to your key -->
+  <g transform="translate(952, 352)">
+    <circle cx="0" cy="0" r="30" fill="#161b22" stroke="#897FFF" stroke-width="2" filter="url(#softGlow)"/>
+    <rect x="-13" y="-4" width="26" height="20" rx="4" fill="#897FFF"/>
+    <path d="M -8 -4 v-6 a 8 8 0 0 1 16 0 v6" stroke="#897FFF" stroke-width="3.5" fill="none"/>
+    <circle cx="0" cy="5" r="3" fill="#0d1117"/>
+  </g>
+
+  <!-- Proof dots orbiting in -->
+  <circle cx="795" cy="215" r="4" fill="#FFCA4A" opacity="0.8"/>
+  <circle cx="990" cy="230" r="3" fill="#f97316" opacity="0.7"/>
+  <circle cx="810" cy="390" r="3" fill="#897FFF" opacity="0.7"/>
+
+  <!-- Watermark -->
+  <text x="1160" y="595" text-anchor="end" font-size="11" fill="#30363d">nostr-core</text>
+
+  <!-- Bottom accent bar -->
+  <rect y="626" width="400" height="4" fill="#f97316"/>
+  <rect x="400" y="626" width="400" height="4" fill="#FFCA4A"/>
+  <rect x="800" y="626" width="400" height="4" fill="#897FFF"/>
+</svg>

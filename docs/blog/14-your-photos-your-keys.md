@@ -1,3 +1,7 @@
+---
+date: 2026-06-02T17:04:33+02:00
+---
+
 <p align="center">
   <img src="/headers/blog-14-your-photos-your-keys.svg" alt="Your Photos, Your Keys" width="100%">
 </p>

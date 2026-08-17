@@ -1,3 +1,7 @@
+---
+date: 2026-03-19T20:37:54+01:00
+---
+
 <p align="center">
   <img src="/headers/blog-04-no-lock-in.svg" alt="The Library That Doesn't Lock You In" width="100%">
 </p>

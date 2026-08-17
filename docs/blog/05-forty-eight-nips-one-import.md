@@ -1,3 +1,7 @@
+---
+date: 2026-03-19T20:37:54+01:00
+---
+
 <p align="center">
   <img src="/headers/blog-05-forty-eight-nips.svg" alt="Forty-Eight NIPs, One Import" width="100%">
 </p>

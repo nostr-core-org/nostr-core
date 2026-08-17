@@ -1,3 +1,7 @@
+---
+date: 2026-03-19T20:37:54+01:00
+---
+
 <p align="center">
   <img src="/headers/blog-01-what-nostr-core-actually-is.svg" alt="What nostr-core Actually Is" width="100%">
 </p>
