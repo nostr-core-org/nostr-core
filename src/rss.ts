@@ -297,6 +297,29 @@ export type ItemToDraftOptions = {
   appendSourceLink?: boolean
   /** Override the HTML→Markdown converter. Defaults to turndown. */
   htmlToMarkdown?: (html: string) => string
+  /** Keep a leading body image even when it duplicates the item image (default false). */
+  keepLeadingImage?: boolean
+}
+
+// A leading markdown image, optionally wrapped in a link.
+const LEADING_IMAGE_RE = /^\s*\[?!\[[^\]]*\]\(([^)\s]+)(?:\s+"[^"]*")?\)(?:\]\([^)\s]*\))?\s*/
+
+// URL minus query, hash, and file extension, so cover.svg matches cover.png.
+function imageStem(url: string): string {
+  return url.split(/[?#]/)[0].replace(/\.[a-z0-9]+$/i, '').toLowerCase()
+}
+
+/**
+ * Feeds routinely carry the cover picture twice: as the item image and again
+ * as the first element of the body (so plain feed readers still show it).
+ * A Nostr client renders the NIP-23 `image` tag AND the body, which would
+ * display the picture twice - so when the leading body image matches the
+ * cover, drop it from the body.
+ */
+function stripLeadingCoverImage(markdown: string, coverUrl: string): string {
+  const m = LEADING_IMAGE_RE.exec(markdown)
+  if (!m || imageStem(m[1]) !== imageStem(coverUrl)) return markdown
+  return markdown.slice(m[0].length).trimStart()
 }
 
 /**
@@ -308,6 +331,10 @@ export type ItemToDraftOptions = {
 export function itemToDraft(item: FeedItem, opts: ItemToDraftOptions = {}): LongFormContent {
   const convert = opts.htmlToMarkdown ?? htmlToMarkdown
   let markdown = convert(item.contentHtml || '').trim()
+
+  if (!opts.keepLeadingImage && item.image) {
+    markdown = stripLeadingCoverImage(markdown, item.image)
+  }
 
   if ((opts.appendSourceLink ?? true) && item.link) {
     markdown += `\n\n---\n\n*Originally published at [${item.link}](${item.link})*`
@@ -344,6 +371,34 @@ export type RehostOptions = {
   authTtl?: number
 }
 
+async function rehostImageUrl(
+  url: string,
+  opts: { server: string; mode: RehostMode; ttl: number; signer: Signer },
+): Promise<BlobDescriptor> {
+  if (opts.mode === 'mirror') {
+    const authTpl = createAuthEventTemplate({
+      action: 'upload',
+      content: 'Mirror image from RSS import',
+      expiration: Math.floor(Date.now() / 1000) + opts.ttl,
+    })
+    const authEvent = (await opts.signer.signEvent(authTpl)) as NostrEvent
+    return mirrorBlob(opts.server, url, authEvent)
+  }
+  const res = await fetch(url)
+  if (!res.ok) throw new RssError(`Image fetch failed: ${res.status}`, 'IMG_FETCH')
+  const data = new Uint8Array(await res.arrayBuffer())
+  const hash = bytesToHex(sha256(data))
+  const authTpl = createAuthEventTemplate({
+    action: 'upload',
+    content: 'Upload image from RSS import',
+    expiration: Math.floor(Date.now() / 1000) + opts.ttl,
+    hashes: [hash],
+    size: data.length,
+  })
+  const authEvent = (await opts.signer.signEvent(authTpl)) as NostrEvent
+  return uploadBlob(opts.server, data, authEvent, res.headers.get('content-type') ?? undefined)
+}
+
 /**
  * Find image URLs in markdown, push each to a Blossom server, and rewrite
  * the markdown to reference the Blossom-hosted blob.
@@ -376,30 +431,7 @@ export async function rehostImagesInMarkdown(
 
   for (const url of urls) {
     try {
-      let blob: BlobDescriptor
-      if (mode === 'mirror') {
-        const authTpl = createAuthEventTemplate({
-          action: 'upload',
-          content: 'Mirror image from RSS import',
-          expiration: Math.floor(Date.now() / 1000) + ttl,
-        })
-        const authEvent = (await opts.signer.signEvent(authTpl)) as NostrEvent
-        blob = await mirrorBlob(primary, url, authEvent)
-      } else {
-        const res = await fetch(url)
-        if (!res.ok) throw new RssError(`Image fetch failed: ${res.status}`, 'IMG_FETCH')
-        const data = new Uint8Array(await res.arrayBuffer())
-        const hash = bytesToHex(sha256(data))
-        const authTpl = createAuthEventTemplate({
-          action: 'upload',
-          content: 'Upload image from RSS import',
-          expiration: Math.floor(Date.now() / 1000) + ttl,
-          hashes: [hash],
-          size: data.length,
-        })
-        const authEvent = (await opts.signer.signEvent(authTpl)) as NostrEvent
-        blob = await uploadBlob(primary, data, authEvent, res.headers.get('content-type') ?? undefined)
-      }
+      const blob = await rehostImageUrl(url, { server: primary, mode, ttl, signer: opts.signer })
       blobs.push(blob)
       remap.set(url, blob.url)
     } catch {
@@ -464,6 +496,21 @@ export async function importFeedAsDrafts(
         signer: opts.signer,
       })
       article.content = markdown
+
+      // The cover travels in the `image` tag, not the body, so rehost it too.
+      if (article.image) {
+        try {
+          const blob = await rehostImageUrl(article.image, {
+            server: opts.blossom.servers.filter(Boolean)[0],
+            mode: opts.blossom.mode ?? 'mirror',
+            ttl: 300,
+            signer: opts.signer,
+          })
+          article.image = blob.url
+        } catch {
+          // Keep the original cover URL if rehosting fails.
+        }
+      }
     }
 
     const tpl = createLongFormEventTemplate({ ...article, isDraft: asDraft })
