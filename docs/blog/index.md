@@ -6,7 +6,10 @@ title: Blogs
 <div class="blog-hero">
   <h1>Blogs</h1>
   <p>Thoughts on building with Nostr, from the team behind nostr-core.</p>
-  <p class="blog-feeds">Subscribe: <a href="/blog/feed.xml">RSS</a> · <a href="/blog/feed.json">JSON Feed</a></p>
+</div>
+
+<div class="blog-feeds-wrap">
+  <BlogFeeds />
 </div>
 
 <div class="blog-grid">
@@ -184,13 +187,14 @@ title: Blogs
   margin: 0;
 }
 
-.blog-hero .blog-feeds {
-  font-size: 0.85rem;
-  margin-top: 0.75rem;
+.blog-feeds-wrap {
+  max-width: 720px;
+  margin: 0 auto 2.5rem;
+  padding: 0 1.5rem;
 }
 
-.blog-hero .blog-feeds a {
-  color: var(--vp-c-brand-1);
+.blog-feeds-wrap .bf-box {
+  margin-top: 0;
 }
 
 .blog-grid {
