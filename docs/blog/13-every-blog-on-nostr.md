@@ -1,3 +1,7 @@
+---
+date: 2026-06-02T17:04:33+02:00
+---
+
 <p align="center">
   <img src="/headers/blog-13-every-blog-on-nostr.svg" alt="Every Blog You've Written, Now on Nostr" width="100%">
 </p>

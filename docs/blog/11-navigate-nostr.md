@@ -1,3 +1,7 @@
+---
+date: 2026-04-02T23:47:30+02:00
+---
+
 <p align="center">
   <img src="/headers/blog-11-navigate-nostr.svg" alt="Navigate Nostr" width="100%">
 </p>

@@ -148,6 +148,7 @@ type ItemToDraftOptions = {
   identifierPrefix?: string
   appendSourceLink?: boolean
   htmlToMarkdown?: (html: string) => string
+  keepLeadingImage?: boolean
 }
 ```
 
@@ -157,6 +158,11 @@ type ItemToDraftOptions = {
 | `identifierPrefix` | `string` | Prepended to the derived `d`-tag identifier (e.g. `'rss-'`). |
 | `appendSourceLink` | `boolean` | If `true` (default), appends `*Originally published at [link](link)*` when the item has a `link`. |
 | `htmlToMarkdown` | `(html) => string` | Override the HTML → Markdown converter (default: turndown). |
+| `keepLeadingImage` | `boolean` | Keep a leading body image even when it duplicates `item.image` (default `false`, see below). |
+
+::: tip Cover image dedupe
+Feeds routinely carry the cover picture twice: as the item image (enclosure / `media:content`) and again as the first element of the body, so plain feed readers still show it. A Nostr client renders the NIP-23 `image` tag **and** the body, which would display the picture twice. By default, when the body's leading image matches `item.image` (same URL ignoring extension and query, so `cover.svg` matches `cover.png?w=600`), it is stripped from the body and only the `image` tag remains. Pass `keepLeadingImage: true` to opt out.
+:::
 
 The `d`-tag is derived as `sha256(guid \|\| link \|\| title)` (16 hex chars). Re-importing the same item produces the same identifier, so the kind 30023 publish will replace any previous draft.
 
@@ -239,7 +245,7 @@ type ImportFeedOptions = {
 | `limit` | `number` | Cap on items to import (after `since` filtering). |
 | `since` | `number` | Skip items published before this unix-seconds timestamp. |
 | `draft` | `ItemToDraftOptions` | Forwarded to [`itemToDraft`](#itemtodraft) for each item. |
-| `blossom` | `{ servers, mode? }` | When set, image URLs are rehosted before signing. |
+| `blossom` | `{ servers, mode? }` | When set, image URLs are rehosted before signing - both the inline body images and the cover in the `image` tag. If the cover fails to rehost, its original URL is kept. |
 | `asDraft` | `boolean` | `true` (default) → kind 30024. `false` → kind 30023 (published). |
 
 ```ts

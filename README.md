@@ -1,18 +1,18 @@
 # nostr-core - Dead-simple & vendor-neutral
 
-**nostr-core** is a comprehensive JavaScript/TypeScript toolkit for building engaging [Nostr](https://nostr.com) applications. With support for 40+ NIPs out of the box, it covers everything from core protocol primitives to advanced social, payments, and identity features — giving you a single, well-typed foundation to build on.
+**nostr-core** is a comprehensive JavaScript/TypeScript toolkit for building engaging [Nostr](https://nostr.com) applications. With support for 45+ NIPs out of the box, it covers everything from core protocol primitives to advanced social, payments, and identity features, giving you a single, well-typed foundation to build on.
 
 **Why nostr-core?**
 
-* 📡 Protocol Complete - 40+ NIPs implemented and ready to use, from basics to cutting-edge
-* ⚡ NWC & Lightning - First-class Nostr Wallet Connect support for seamless payment flows
+* 📡 Protocol Complete - 45+ NIPs implemented and ready to use, from basics to cutting-edge
+* ⚡ Payments Native - Nostr Wallet Connect, Lightning Addresses, LNURL, and ecash (NIP-60/61)
 * 🔐 Identity & Auth - Key management, NIP-07 browser signing, and bunker/remote signer support
 * 🎯 Relay Management - Smart relay abstraction with connection pooling and event routing
 * 🛠️ TypeScript Native - Fully typed, modern APIs designed for developer confidence
 * 🧩 Composable - Headless and framework-agnostic; drop it into any stack
 * 📦 Modular - Use only what you need, scale as your app grows
 
-**Built for builders who want to ship**, not fight the protocol. [Demo](https://nostr-core-demo.netlify.app/)
+**Built for builders who want to ship**, not fight the protocol. [Docs](https://nostr-core.netlify.app) · [Blog](https://nostr-core.netlify.app/blog/) · [Demo](https://nostr-core-demo.netlify.app/)
 
  [Nostr Wallet Connect (NWC)](https://github.com/nostr-protocol/nips/blob/master/47.md) 
 ```ts
@@ -41,6 +41,9 @@ nwc.close()
 - **Zero framework deps** - built on audited [noble](https://paulmillr.com/noble/) cryptography libraries only
 - **ESM-only** - tree-shakeable, modern JavaScript
 - **RSS → Nostr** - import any blog feed (RSS, Atom, JSON Feed) as signed NIP-23 drafts, with optional Blossom image rehosting
+- **Ecash ready** - NIP-60 wallets, NIP-61 nutzaps, and NIP-87 mint discovery through your social graph
+- **Validate at the edges** - `schema` shape validators and composable `policy` checks for untrusted events
+- **Experimental modules** - mail over gift wrap and appointment scheduling, clearly flagged as experimental
 
 ## Install
 
@@ -212,6 +215,9 @@ import {
   // Filters
   matchFilter, matchFilters,
 
+  // Feature namespaces
+  rss, schema, policy, nip60, nip61, nip78, nip87, mail, scheduling,
+
   // Utilities
   normalizeURL, bytesToHex, hexToBytes, randomBytes,
 } from 'nostr-core'
@@ -239,7 +245,7 @@ See the full [comparison guide](./docs/guide/comparison.md) for details.
 
 ## Agent Skills (Claude Code Plugin)
 
-nostr-core ships as a [Claude Code plugin](https://code.claude.com/docs/en/plugins) with 4 skills for AI agents building Lightning-enabled apps:
+nostr-core ships as a [Claude Code plugin](https://code.claude.com/docs/en/plugins) with 10 skills for AI agents building on Nostr and Lightning:
 
 | Skill | Description |
 |-------|-------------|
@@ -247,6 +253,12 @@ nostr-core ships as a [Claude Code plugin](https://code.claude.com/docs/en/plugi
 | `/lightning-pay` | Pay invoices, Lightning Addresses, fiat, and keysend |
 | `/wallet-monitor` | Real-time notifications, transaction history, analytics |
 | `/nostr-primitives` | Low-level keys, events, relays, encryption, encoding |
+| `/nostr-identity` | Keypairs, mnemonics, NIP-05, signers, profiles |
+| `/nostr-messaging` | Encrypted DMs, public notes, channels, groups |
+| `/nostr-social` | Threads, reactions, articles, follows, moderation |
+| `/lightning-agent` | Scaffold a complete Lightning-enabled Nostr agent |
+| `/navigate-nostr` | Find the right NIP, LUD, NUT, or BUD for any feature |
+| `/lnbits-mcp` | Connect an LNbits wallet via NWC and its MCP server |
 
 Install: `/plugin install nostr-core-org/nostr-core`
 
@@ -260,6 +272,7 @@ See the [Skills documentation](./docs/skills.md) and [Agent README](./AGENT_READ
 | [@noble/hashes](https://github.com/paulmillr/noble-hashes) | SHA-256, HMAC, HKDF |
 | [@noble/ciphers](https://github.com/paulmillr/noble-ciphers) | AES-CBC, ChaCha20 |
 | [@scure/base](https://github.com/paulmillr/scure-base) | Base64, bech32 encoding |
+| [@scure/bip32](https://github.com/paulmillr/scure-bip32) / [bip39](https://github.com/paulmillr/scure-bip39) | NIP-06 key derivation from mnemonics |
 
 ## License
 

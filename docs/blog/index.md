@@ -8,6 +8,10 @@ title: Blogs
   <p>Thoughts on building with Nostr, from the team behind nostr-core.</p>
 </div>
 
+<div class="blog-feeds-wrap">
+  <BlogFeeds />
+</div>
+
 <div class="blog-grid">
 
 <BlogCard
@@ -108,6 +112,55 @@ title: Blogs
   link="/blog/14-your-photos-your-keys"
 />
 
+<BlogCard
+  title="The Zap That Is Already Money"
+  description="No invoice, no callback, no receipt to take on faith. Kind 9321 carries the cash itself."
+  image="/headers/blog-15-nutzaps.svg"
+  link="/blog/15-the-zap-that-is-already-money"
+/>
+
+<BlogCard
+  title="Finding Mints You Can Trust"
+  description="Your follows already know which mints are good. NIP-87 lets you ask them instead of a hardcoded list."
+  image="/headers/blog-16-mint-discovery.svg"
+  link="/blog/16-finding-mints-you-can-trust"
+/>
+
+<BlogCard
+  title="Book Me on Nostr"
+  description="An availability page that is an event, bookings that are private calendar invites, and no subscription in between."
+  image="/headers/blog-17-book-me.svg"
+  link="/blog/17-book-me-on-nostr"
+/>
+
+<BlogCard
+  title="Mail, Minus the Mail Server"
+  description="To, Cc, and a Bcc that stays blind by construction. Email-shaped messaging over gift wrap."
+  image="/headers/blog-18-nostr-mail.svg"
+  link="/blog/18-mail-minus-the-mail-server"
+/>
+
+<BlogCard
+  title="Your Settings Follow Your Keys"
+  description="Kind 30078 turns relays into a personal database. Preferences on every device, no account system."
+  image="/headers/blog-19-app-data.svg"
+  link="/blog/19-your-settings-follow-your-keys"
+/>
+
+<BlogCard
+  title="Validate Before You Trust"
+  description="TypeScript ends at compile time. Schema checks shape at the edges; policy judges what gets through."
+  image="/headers/blog-20-validate.svg"
+  link="/blog/20-validate-before-you-trust"
+/>
+
+<BlogCard
+  title="Connections That Heal Themselves"
+  description="Laptops sleep and NATs time out. Relays now reconnect with backoff and replay your subscriptions."
+  image="/headers/blog-21-reconnect.svg"
+  link="/blog/21-connections-that-heal-themselves"
+/>
+
 </div>
 
 <style>
@@ -132,6 +185,16 @@ title: Blogs
   font-size: 1.1rem;
   color: var(--vp-c-text-2);
   margin: 0;
+}
+
+.blog-feeds-wrap {
+  max-width: 720px;
+  margin: 0 auto 2.5rem;
+  padding: 0 1.5rem;
+}
+
+.blog-feeds-wrap .bf-box {
+  margin-top: 0;
 }
 
 .blog-grid {

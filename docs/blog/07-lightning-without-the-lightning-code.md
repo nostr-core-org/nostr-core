@@ -1,3 +1,7 @@
+---
+date: 2026-03-19T20:37:54+01:00
+---
+
 <p align="center">
   <img src="/headers/blog-07-lightning-payments.svg" alt="Lightning Without the Lightning Code" width="100%">
 </p>
