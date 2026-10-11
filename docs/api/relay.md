@@ -112,7 +112,7 @@ relay.subscribe([{ kinds: [1059], '#p': [pk] }], { onevent, onclose })
 Behaviour with an `authSigner`:
 
 - Every AUTH challenge is answered automatically, **once per challenge**. Concurrent
-  needs for the same challenge share one answer, and only one AUTH is in flight at a time.
+  needs for the same challenge share one answer.
 - A subscription closed with `auth-required:` authenticates (waiting up to
   [`authTimeout`](#authtimeout) for a challenge if none arrived yet) and is then
   re-sent **once** with the same id. A second `auth-required:` closes it for real

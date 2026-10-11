@@ -84,10 +84,6 @@ function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promi
   return Promise.race([promise, timeout]).finally(() => clearTimeout(timer))
 }
 
-function errorMessage(err: unknown): string {
-  return (err as Error)?.message || String(err)
-}
-
 type OpenPublish = {
   resolve: (reason: string) => void
   reject: (err: Error) => void
@@ -203,9 +199,9 @@ export class Relay {
   /** Bumped whenever the socket goes away, so late auth results for an old socket are ignored. */
   private connectionGen = 0
   private authedChallenge: string | undefined
-  /** The one answer per challenge; later answers queue behind it. */
+  /** The one answer per challenge, shared by everyone waiting on it. */
   private authAttempt: { challenge: string; result: Promise<void> } | undefined
-  private challengeWaiters = new Set<{ resolve: (challenge: string) => void; reject: (err: Error) => void }>()
+  private challengeWaiters = new Set<{ resolve: () => void; reject: (err: Error) => void }>()
 
   constructor(url: string, opts?: RelayOptions) {
     this.url = normalizeURL(url)
@@ -434,7 +430,8 @@ export class Relay {
     this.challenge = undefined
     this.authedChallenge = undefined
     this.authAttempt = undefined
-    for (const waiter of [...this.challengeWaiters]) waiter.reject(new Error(reason))
+    for (const waiter of this.challengeWaiters) waiter.reject(new Error(reason))
+    this.challengeWaiters.clear()
   }
 
   private _isAuthRequired(reason: unknown): boolean {
@@ -451,8 +448,7 @@ export class Relay {
     if (challenge === undefined) return this._nextChallenge().then(() => this._authenticate())
     if (challenge === this.authedChallenge) return Promise.resolve()
     if (this.authAttempt?.challenge !== challenge) {
-      const previous = this.authAttempt?.result.catch(() => {}) ?? Promise.resolve()
-      const result = previous.then(() => this._answerChallenge(challenge))
+      const result = this._answerChallenge(challenge)
       result.catch(() => {})
       this.authAttempt = { challenge, result }
     }
@@ -467,24 +463,16 @@ export class Relay {
     await this.auth(event)
   }
 
-  private _nextChallenge(): Promise<string> {
+  private _nextChallenge(): Promise<void> {
     return new Promise((resolve, reject) => {
-      const waiter = {
-        resolve: (challenge: string) => {
-          clearTimeout(timer)
-          this.challengeWaiters.delete(waiter)
-          resolve(challenge)
-        },
-        reject: (err: Error) => {
-          clearTimeout(timer)
-          this.challengeWaiters.delete(waiter)
-          reject(err)
-        },
-      }
-      const timer = unrefTimer(setTimeout(() => waiter.reject(new Error('no auth challenge received')), this.authTimeout))
+      const waiter = { resolve, reject }
       this.challengeWaiters.add(waiter)
+      unrefTimer(setTimeout(() => {
+        if (this.challengeWaiters.delete(waiter)) reject(new Error('no auth challenge received'))
+      }, this.authTimeout))
     })
   }
+
 
   /**
    * Authenticate, then run `retry`. `fail` gets a reason when that is not
@@ -499,11 +487,11 @@ export class Relay {
         try {
           retry()
         } catch (err) {
-          fail(errorMessage(err))
+          fail(((err as Error)?.message ?? String(err)))
         }
       },
       err => {
-        if (gen === this.connectionGen) fail(`${AUTH_REQUIRED} ${errorMessage(err)}`)
+        if (gen === this.connectionGen) fail(`${AUTH_REQUIRED} ${((err as Error)?.message ?? String(err))}`)
       },
     )
   }
@@ -591,7 +579,8 @@ export class Relay {
       case 'AUTH': {
         const challenge = data[1] as string
         this.challenge = challenge
-        for (const waiter of [...this.challengeWaiters]) waiter.resolve(challenge)
+        for (const waiter of this.challengeWaiters) waiter.resolve()
+        this.challengeWaiters.clear()
         // An explicit onauth handler stays in charge of answering challenges.
         if (this.onauth) this.onauth(challenge)
         else if (this.authSigner) this._authenticate().catch(() => {})
