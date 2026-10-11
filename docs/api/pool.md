@@ -112,7 +112,7 @@ Publishes an event to multiple relays. Failed publishes are silently dropped.
 await pool.publishDetailed(
   relayUrls: string[],
   event: NostrEvent,
-  opts?: PublishDetailedOptions
+  opts?: { onResult?: (result: PublishResult) => void }
 ): Promise<PublishResult[]>
 ```
 
@@ -125,7 +125,7 @@ trouble never rejects the promise: a failed connection, a timeout or an
 |-----------|------|-------------|
 | `relayUrls` | `string[]` | Relay URLs to publish to |
 | `event` | `NostrEvent` | Signed event |
-| `opts.onResult` | `(result: PublishResult) => void` | Called once per relay as soon as its outcome is known. Errors it throws are ignored |
+| `opts.onResult` | `(result: PublishResult) => void` | Called once per relay as soon as its outcome is known |
 
 **Returns:** [`PublishResult[]`](#publishresult)
 
@@ -214,19 +214,11 @@ type PublishResult = {
 |-------|------|-------------|
 | `url` | `string` | Normalised relay URL |
 | `ok` | `boolean` | `true` when the relay answered `OK` with `true` |
-| `reason` | `string` | The relay's `OK` reason as sent (may be empty when `ok`), or the local failure when no `OK` came: `connection failed`, `connection timed out`, `publish timed out`, `relay connection closed`, `Invalid URL: ...` |
-| `prefix` | [`RelayReasonPrefix?`](/api/relay#relayreasonprefix) | Machine-readable prefix of `reason`, if it has a known one |
+| `reason` | `string` | The relay's `OK` reason, or the local error when it never answered (`connection failed`, `publish timed out`, ...) |
+| `prefix` | [`RelayReasonPrefix?`](/api/relay#parserelayreason) | Machine-readable prefix of `reason`, if it has a known one |
 | `message` | `string` | `reason` without its prefix, trimmed |
 
 `prefix` and `message` come from [`parseRelayReason`](/api/relay#parserelayreason).
-
-### PublishDetailedOptions
-
-```ts
-type PublishDetailedOptions = {
-  onResult?: (result: PublishResult) => void
-}
-```
 
 ### PoolSubscribeParams
 

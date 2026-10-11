@@ -297,76 +297,22 @@ type SubscriptionParams = {
 
 ## Relay Reasons
 
-`OK` and `CLOSED` messages carry a reason of the form `"<prefix>: <message>"`,
-where the prefix is machine-readable (NIP-01, plus `auth-required` from NIP-42).
+`OK` and `CLOSED` messages carry a reason that may start with a machine-readable prefix (`"<prefix>: <message>"`): the NIP-01 prefixes plus `auth-required` from NIP-42.
 
 ### parseRelayReason
 
 ```ts
-import { parseRelayReason } from 'nostr-core'
+function parseRelayReason(reason: string): { prefix?: RelayReasonPrefix; message: string }
 
-parseRelayReason(reason: string): ParsedRelayReason
-```
-
-Splits a reason into its prefix and the human-readable rest.
-
-```ts
-parseRelayReason('rate-limited: slow down')
-// { prefix: 'rate-limited', message: 'slow down' }
-
-parseRelayReason('something went wrong')
-// { message: 'something went wrong' }
-```
-
-Relays are third parties, so it is lenient and never throws:
-
-- the prefix matches case-insensitively and ignores surrounding whitespace (`' ERROR :  boom '` gives `{ prefix: 'error', message: 'boom' }`);
-- only a whole known word counts: `foo: bar` and `unblocked: x` have no prefix;
-- a bare keyword without a colon (`duplicate`) still counts, with an empty `message`;
-- text without a known prefix comes back whole, trimmed, in `message`;
-- a non-string reason is treated as an empty one.
-
-Use it on [`pool.publishDetailed`](/api/pool#publishdetailed) results (already
-parsed for you), on the error of a rejected `relay.publish`, and on
-`onclose` reasons:
-
-```ts
-relay.subscribe(filters, {
-  onclose(reason) {
-    if (parseRelayReason(reason).prefix === 'auth-required') {
-      // authenticate (NIP-42), then subscribe again
-    }
-  },
-})
-```
-
-### RelayReasonPrefix
-
-```ts
 type RelayReasonPrefix =
   | 'duplicate' | 'pow' | 'blocked' | 'rate-limited' | 'invalid'
   | 'restricted' | 'mute' | 'error' | 'auth-required'
 ```
 
-| Prefix | Meaning |
-|--------|---------|
-| `duplicate` | The relay already has the event |
-| `pow` | Not enough proof of work (NIP-13) |
-| `blocked` | Relay policy forbids this author, event or address |
-| `rate-limited` | Too many requests; slow down |
-| `invalid` | Malformed event or broken relay rule |
-| `restricted` | Not allowed to do that here (e.g. no write access) |
-| `mute` | Ignored, e.g. an ephemeral event nobody listened to |
-| `error` | The relay failed internally, or nothing else fits |
-| `auth-required` | Authenticate first (NIP-42), then repeat the request |
-
-The same list is exported as `RELAY_REASON_PREFIXES` (a readonly array).
-
-### ParsedRelayReason
-
 ```ts
-type ParsedRelayReason = {
-  prefix?: RelayReasonPrefix
-  message: string
-}
+parseRelayReason('rate-limited: slow down') // { prefix: 'rate-limited', message: 'slow down' }
+parseRelayReason('something went wrong')    // { message: 'something went wrong' }
 ```
+
+An unknown or missing prefix gives `{ message }` only. Use it on a `Subscription`'s `onclose` reason, or on `publishDetailed` results (which already include it).
+

@@ -1771,15 +1771,14 @@ type SubscriptionParams = {
 ## parseRelayReason
 
 ```ts
-import { parseRelayReason, RELAY_REASON_PREFIXES } from 'nostr-core'
+import { parseRelayReason } from 'nostr-core'
 
-parseRelayReason(reason: string): ParsedRelayReason
+parseRelayReason(reason: string): { prefix?: RelayReasonPrefix; message: string }
 
 type RelayReasonPrefix =
   | 'duplicate' | 'pow' | 'blocked' | 'rate-limited' | 'invalid'
   | 'restricted' | 'mute' | 'error' | 'auth-required'
 
-type ParsedRelayReason = { prefix?: RelayReasonPrefix; message: string }
 ```
 
 Splits an `OK` / `CLOSED` reason (`"<prefix>: <message>"`, NIP-01 prefixes plus NIP-42 `auth-required`) into its machine-readable prefix and the trimmed human-readable rest.
@@ -1789,10 +1788,7 @@ parseRelayReason('rate-limited: slow down') // { prefix: 'rate-limited', message
 parseRelayReason('something went wrong')    // { message: 'something went wrong' }
 ```
 
-- Never throws; a non-string reason counts as empty.
-- Prefix match is case-insensitive and whitespace-tolerant (`' ERROR :  boom '` -> `error` / `boom`).
-- Only a whole known word counts (`foo: bar`, `unblocked: x` -> no prefix); a bare keyword (`duplicate`) counts with an empty message.
-- `RELAY_REASON_PREFIXES` is the same list as a readonly array.
+An unknown or missing prefix gives `{ message }` only.
 
 ---
 
@@ -1851,7 +1847,7 @@ await pool.publishDetailed(
 
 - One result per relay URL (normalised, deduplicated), in input order.
 - Never rejects for relay trouble: connection failure, timeout and `OK false` all become `ok: false` with a `reason`.
-- `onResult` fires once per relay as soon as its outcome is known (resolve "sent" on the first `ok: true`). Errors it throws are ignored.
+- `onResult` fires once per relay as soon as its outcome is known (resolve "sent" on the first `ok: true`).
 - A `duplicate:` refusal means the relay already has the event; most apps treat it as delivered.
 
 ```ts
@@ -1899,7 +1895,6 @@ type PublishResult = {
   message: string             // reason without its prefix, trimmed
 }
 
-type PublishDetailedOptions = { onResult?: (result: PublishResult) => void }
 ```
 
 ---
