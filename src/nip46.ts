@@ -204,10 +204,10 @@ export class NostrConnect implements Signer {
         },
       )
 
-      // Send connect RPC with optional secret
+      // NIP-46: connect params are [remote-signer-pubkey, optional_secret]
       const params = this.secret
-        ? [this.publicKey, this.secret]
-        : [this.publicKey]
+        ? [this.remotePubkey, this.secret]
+        : [this.remotePubkey]
 
       // In 'auto' mode start on NIP-44 (spec + Amber) and fall back to NIP-04
       // only if the handshake goes unanswered. A signer that *replies* in
