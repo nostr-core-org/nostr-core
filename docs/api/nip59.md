@@ -10,6 +10,16 @@ import { nip59 } from 'nostr-core'
 import { createRumor, createSeal, createWrap, unwrap } from 'nostr-core'
 ```
 
+## GiftWrapOptions Type
+
+```ts
+type GiftWrapOptions = {
+  tags?: string[][]
+}
+```
+
+Optional extra tags for `createSeal` and `createWrap`, e.g. a NIP-40 `['expiration', '<unix seconds>']` for disappearing messages. These tags are visible outside the encryption, so never put anything private in them.
+
 ## Rumor Type
 
 ```ts
@@ -58,42 +68,59 @@ const rumor = nip59.createRumor(
 function createSeal(
   rumor: Rumor,
   senderSecretKey: Uint8Array,
-  recipientPubkey: string
+  recipientPubkey: string,
+  opts?: GiftWrapOptions
 ): NostrEvent
 ```
 
-Encrypts a rumor into a kind 13 seal using NIP-44. The seal is signed by the sender, has empty tags, and a randomized timestamp (up to 2 days in the past).
+Encrypts a rumor into a kind 13 seal using NIP-44. The seal is signed by the sender and has a randomized timestamp (up to 2 days in the past). Its tags are empty unless `opts.tags` is given.
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `rumor` | `Rumor` | The unsigned event to seal |
 | `senderSecretKey` | `Uint8Array` | Sender's secret key (32 bytes) |
 | `recipientPubkey` | `string` | Recipient's public key (64-char hex) |
+| `opts.tags` | `string[][]?` | Extra seal tags. NIP-59 keeps seal tags empty; the exception is NIP-17 disappearing messages, which SHOULD repeat the `expiration` tag here |
 
 **Returns:** `NostrEvent` - signed kind 13 event.
 
 ```ts
 const seal = nip59.createSeal(rumor, senderSecretKey, recipientPubkey)
+
+// disappearing message (NIP-17 + NIP-40)
+const expiring = nip59.createSeal(rumor, senderSecretKey, recipientPubkey, {
+  tags: [['expiration', String(expiresAt)]],
+})
 ```
 
 ## nip59.createWrap
 
 ```ts
-function createWrap(seal: NostrEvent, recipientPubkey: string): NostrEvent
+function createWrap(
+  seal: NostrEvent,
+  recipientPubkey: string,
+  opts?: GiftWrapOptions
+): NostrEvent
 ```
 
-Wraps a seal in a kind 1059 gift wrap using a random ephemeral keypair. The wrap is encrypted with NIP-44 using the ephemeral key, has a `['p', recipientPubkey]` tag for relay routing, and a randomized timestamp.
+Wraps a seal in a kind 1059 gift wrap using a random ephemeral keypair. The wrap is encrypted with NIP-44 using the ephemeral key, has a `['p', recipientPubkey]` tag for relay routing, and a randomized timestamp. The `p` tag is always present and always first; `opts.tags` follow it.
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `seal` | `NostrEvent` | The kind 13 seal to wrap |
 | `recipientPubkey` | `string` | Recipient's public key (64-char hex) |
+| `opts.tags` | `string[][]?` | Extra wrap tags, e.g. `['expiration', '<unix seconds>']` |
 
 **Returns:** `NostrEvent` - signed kind 1059 event (signed by the ephemeral key).
 
 ```ts
 const wrap = nip59.createWrap(seal, recipientPubkey)
 // wrap.pubkey is the ephemeral key - sender identity is hidden
+
+const expiring = nip59.createWrap(seal, recipientPubkey, {
+  tags: [['expiration', String(expiresAt)]],
+})
+// expiring.tags: [['p', recipientPubkey], ['expiration', '...']]
 ```
 
 ## nip59.unwrap
@@ -128,7 +155,7 @@ console.log(rumor.content) // decrypted content
 Three layers protect metadata:
 
 1. **Rumor** - the actual content, unsigned (deniability)
-2. **Seal** (kind 13) - encrypts the rumor with NIP-44 using `sender + recipient` keys, signed by sender, empty tags, randomized timestamp
+2. **Seal** (kind 13) - encrypts the rumor with NIP-44 using `sender + recipient` keys, signed by sender, empty tags (unless an expiration is set), randomized timestamp
 3. **Gift Wrap** (kind 1059) - encrypts the seal with NIP-44 using `ephemeral + recipient` keys, signed by ephemeral key, `p` tag for routing
 
 Relays and observers only see the ephemeral pubkey and the recipient - they cannot determine the real sender or read the content.

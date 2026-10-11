@@ -152,7 +152,7 @@ export type {
 
 // NIP-59
 export { createRumor, createSeal, createWrap, unwrap } from './nip59.js'
-export type { Rumor } from './nip59.js'
+export type { Rumor, GiftWrapOptions } from './nip59.js'
 
 // NIP-65
 export { parseRelayList, createRelayListEventTemplate, createRelayListEvent, getReadRelays, getWriteRelays } from './nip65.js'
@@ -179,8 +179,8 @@ export { fetchRelayInfo, supportsNip, Nip11Error } from './nip11.js'
 export type { RelayInfo } from './nip11.js'
 
 // NIP-17
-export { wrapDirectMessage, unwrapDirectMessage } from './nip17.js'
-export type { DirectMessage } from './nip17.js'
+export { wrapDirectMessage, unwrapDirectMessage, createMessage, unwrapMessage } from './nip17.js'
+export type { DirectMessage, MessageKind, MessageParams, MessageWrap, UnwrappedMessage } from './nip17.js'
 
 // NIP-21
 export { encodeNostrURI, decodeNostrURI, isNostrURI } from './nip21.js'

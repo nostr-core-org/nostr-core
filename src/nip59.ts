@@ -19,7 +19,21 @@ export type Rumor = {
   pubkey: string
 }
 
+/** Options shared by {@link createSeal} and {@link createWrap}. */
+export type GiftWrapOptions = {
+  /**
+   * Extra tags for the event, e.g. a NIP-40 `['expiration', '<unix seconds>']`
+   * for disappearing messages. They are visible to relays, so never put
+   * anything private here.
+   */
+  tags?: string[][]
+}
+
 // Helpers
+
+function copyTags(tags: string[][] | undefined): string[][] {
+  return (tags ?? []).map(tag => [...tag])
+}
 
 function randomTimestamp(): number {
   // Randomize up to 2 days in the past
@@ -43,6 +57,7 @@ export function createSeal(
   rumor: Rumor,
   senderSecretKey: Uint8Array,
   recipientPubkey: string,
+  opts?: GiftWrapOptions,
 ): NostrEvent {
   const convKey = nip44.getConversationKey(senderSecretKey, recipientPubkey)
   const encrypted = nip44.encrypt(JSON.stringify(rumor), convKey)
@@ -50,7 +65,7 @@ export function createSeal(
   return finalizeEvent(
     {
       kind: SEAL_KIND,
-      tags: [],
+      tags: copyTags(opts?.tags),
       content: encrypted,
       created_at: randomTimestamp(),
     },
@@ -61,6 +76,7 @@ export function createSeal(
 export function createWrap(
   seal: NostrEvent,
   recipientPubkey: string,
+  opts?: GiftWrapOptions,
 ): NostrEvent {
   const ephemeralKey = generateSecretKey()
   const convKey = nip44.getConversationKey(ephemeralKey, recipientPubkey)
@@ -69,7 +85,8 @@ export function createWrap(
   return finalizeEvent(
     {
       kind: GIFT_WRAP_KIND,
-      tags: [['p', recipientPubkey]],
+      // The routing 'p' tag always comes first; extra tags follow it.
+      tags: [['p', recipientPubkey], ...copyTags(opts?.tags)],
       content: encrypted,
       created_at: randomTimestamp(),
     },

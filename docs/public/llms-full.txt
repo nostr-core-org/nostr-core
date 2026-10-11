@@ -3267,6 +3267,14 @@ type Rumor = {
 
 An unsigned event. Has an `id` (hash) but no `sig`, providing sender deniability.
 
+## GiftWrapOptions Type
+
+```ts
+type GiftWrapOptions = { tags?: string[][] }
+```
+
+Optional extra tags for `createSeal` and `createWrap`, e.g. NIP-40 `['expiration', '<unix seconds>']` for disappearing messages. Visible outside the encryption, so never private.
+
 ## nip59.createRumor
 
 ```ts
@@ -3278,18 +3286,18 @@ Creates an unsigned event (rumor) with a computed id.
 ## nip59.createSeal
 
 ```ts
-function createSeal(rumor: Rumor, senderSecretKey: Uint8Array, recipientPubkey: string): NostrEvent
+function createSeal(rumor: Rumor, senderSecretKey: Uint8Array, recipientPubkey: string, opts?: GiftWrapOptions): NostrEvent
 ```
 
-Encrypts a rumor into a kind 13 seal using NIP-44. Signed by sender, empty tags, randomized timestamp (up to 2 days in the past).
+Encrypts a rumor into a kind 13 seal using NIP-44. Signed by sender, randomized timestamp (up to 2 days in the past). Tags are empty unless `opts.tags` is given (NIP-17 disappearing messages SHOULD repeat the `expiration` tag on the seal).
 
 ## nip59.createWrap
 
 ```ts
-function createWrap(seal: NostrEvent, recipientPubkey: string): NostrEvent
+function createWrap(seal: NostrEvent, recipientPubkey: string, opts?: GiftWrapOptions): NostrEvent
 ```
 
-Wraps a seal in a kind 1059 gift wrap using a random ephemeral keypair. NIP-44 encrypted, `['p', recipientPubkey]` tag for routing, randomized timestamp.
+Wraps a seal in a kind 1059 gift wrap using a random ephemeral keypair. NIP-44 encrypted, `['p', recipientPubkey]` tag for routing (always present, always first; `opts.tags` follow it), randomized timestamp.
 
 ## nip59.unwrap
 
@@ -3302,7 +3310,7 @@ Unwraps a gift wrap: decrypts wrap, verifies seal signature, decrypts seal, vali
 ## How It Works
 
 1. **Rumor** - actual content, unsigned (deniability)
-2. **Seal** (kind 13) - encrypts rumor with NIP-44 (sender + recipient keys), signed by sender, empty tags
+2. **Seal** (kind 13) - encrypts rumor with NIP-44 (sender + recipient keys), signed by sender, empty tags (unless an expiration is set)
 3. **Gift Wrap** (kind 1059) - encrypts seal with NIP-44 (ephemeral + recipient keys), signed by ephemeral key, `p` tag for routing
 
 ---
@@ -3412,8 +3420,10 @@ Private Direct Messages - end-to-end encrypted DMs with sender anonymity. Built 
 ```ts
 import { nip17 } from 'nostr-core'
 // or import individual functions
-import { wrapDirectMessage, unwrapDirectMessage } from 'nostr-core'
+import { createMessage, unwrapMessage, wrapDirectMessage, unwrapDirectMessage } from 'nostr-core'
 ```
+
+`createMessage` / `unwrapMessage` cover full NIP-17: one wrap per receiver plus a sender copy, kinds 14 (message), 15 (file message) and 7 (reaction), disappearing messages. `wrapDirectMessage` / `unwrapDirectMessage` remain for one kind 14 message to one recipient.
 
 ## DirectMessage Type
 
@@ -3426,6 +3436,45 @@ type DirectMessage = {
   id: string
 }
 ```
+
+## Message Types
+
+```ts
+type MessageKind = 14 | 15 | 7
+type MessageParams = {
+  kind?: MessageKind; content: string; tags?: string[][]
+  recipients: string[]; senderSecretKey: Uint8Array
+  selfCopy?: boolean; expiration?: number; created_at?: number
+}
+type MessageWrap = { recipient: string; wrap: NostrEvent }
+type UnwrappedMessage = { kind: MessageKind; sender: string; rumor: Rumor }
+```
+
+## nip17.createMessage
+
+```ts
+function createMessage(params: MessageParams): { rumor: Rumor; wraps: MessageWrap[] }
+```
+
+One rumor (kind 14 default, 15 or 7), gift-wrapped individually for each receiver and, unless `selfCopy: false`, the sender. All copies share the rumor id; each wrap has its own seal, ephemeral key and randomized timestamps. `wraps` lists receivers in input order, the sender's copy last. Recipients (64-char lowercase hex) are deduplicated and the sender is wrapped at most once; a `p` tag is added to the rumor for each receiver not already tagged. `expiration` (unix seconds, NIP-40) is set on every wrap and seal for disappearing messages; read it back with `nip40.getExpiration(wrap)`. Throws on unsupported kind, empty or invalid recipients, invalid `expiration`/`created_at`, or nothing to wrap. Publish each wrap to its recipient's DM relays (kind 10050).
+
+```ts
+const { rumor, wraps } = nip17.createMessage({
+  content: 'Hello both!',
+  recipients: [bobPk, carolPk],
+  senderSecretKey: aliceSk,
+})
+// reaction: { kind: 7, content: '+', tags: [['e', messageId], ['k', '14']], ... }
+// disappearing: { ..., expiration: Math.floor(Date.now() / 1000) + 3600 }
+```
+
+## nip17.unwrapMessage
+
+```ts
+function unwrapMessage(wrap: NostrEvent, recipientSecretKey: Uint8Array): UnwrappedMessage
+```
+
+Unwraps a kind 14, 15 or 7 message. Verifies the seal like `unwrapDirectMessage`; `sender` is the rumor pubkey (checked against the seal). Throws on invalid wrap, decryption failure, pubkey mismatch, or any other rumor kind.
 
 ## nip17.wrapDirectMessage
 

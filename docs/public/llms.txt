@@ -37,7 +37,7 @@ nostr-core lets agents and applications pay invoices, check balances, create inv
 - [NIP-10](api/nip10.md): Text note threads (parseThread, buildThreadTags)
 - [NIP-11](api/nip11.md): Relay information document (fetchRelayInfo, supportsNip)
 - [NIP-13](api/nip13.md): Proof of work (minePow, verifyPow, getPowDifficulty)
-- [NIP-17](api/nip17.md): Private Direct Messages - end-to-end encrypted DMs with sender anonymity (wrapDirectMessage, unwrapDirectMessage)
+- [NIP-17](api/nip17.md): Private Direct Messages - end-to-end encrypted DMs with sender anonymity; multi-recipient with sender copy, file messages, reactions, disappearing messages (createMessage, unwrapMessage, wrapDirectMessage, unwrapDirectMessage)
 - [NIP-18](api/nip18.md): Reposts (createRepostEvent, parseRepost) - kind 6 text note reposts, kind 16 generic reposts
 - [NIP-19](api/nip19.md): Bech32 encoding/decoding (npub, nsec, note, nprofile, nevent, naddr)
 - [NIP-21](api/nip21.md): nostr: URI scheme (encodeNostrURI, decodeNostrURI, isNostrURI)
@@ -62,7 +62,7 @@ nostr-core lets agents and applications pay invoices, check balances, create inv
 - [NIP-57](api/nip57.md): Lightning zaps (createZapRequestEvent, parseZapReceipt, validateZapReceipt, fetchZapInvoice)
 - [NIP-52](api/nip52.md): Calendar Events (createDateBasedCalendarEvent, createTimeBasedCalendarEvent, createCalendarEvent, createCalendarEventRSVP, parseCalendar)
 - [NIP-58](api/nip58.md): Badges (createBadgeDefinitionEvent, createBadgeAwardEvent, parseBadgeDefinition, createBadgeRequestEvent, createBadgeDenialEvent, resolveBadgeRequestState)
-- [NIP-59](api/nip59.md): Gift Wrap - multi-layer event encryption for metadata protection (createRumor, createSeal, createWrap, unwrap)
+- [NIP-59](api/nip59.md): Gift Wrap - multi-layer event encryption for metadata protection, optional extra seal/wrap tags for expiration (createRumor, createSeal, createWrap, unwrap)
 - [NIP-60](api/nip60.md): Cashu Wallets - eCash wallet storage on Nostr with NIP-44 encrypted tokens (createWalletEvent, createTokenEvent, parseTokenEvent, getProofsBalance)
 - [NIP-61](api/nip61.md): Nutzaps - P2PK-locked Cashu payments where the payment is the receipt (createNutzapInfoEvent, createNutzapEvent, parseNutzap, verifyNutzap, toP2PKLockKey, createNutzapRedemptionEvent, getNutzapFilter)
 - [NIP-65](api/nip65.md): Relay List Metadata - user relay preferences for read/write routing (parseRelayList, createRelayListEvent, getReadRelays, getWriteRelays)
