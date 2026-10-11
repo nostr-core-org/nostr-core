@@ -37,12 +37,6 @@ type MessageParams = {
   senderSecretKey: Uint8Array
   selfCopy?: boolean          // default true
   expiration?: number         // unix seconds (NIP-40)
-  created_at?: number         // unix seconds, default now
-}
-
-type MessageWrap = {
-  recipient: string
-  wrap: NostrEvent
 }
 
 type UnwrappedMessage = {
@@ -57,7 +51,7 @@ type UnwrappedMessage = {
 ```ts
 function createMessage(params: MessageParams): {
   rumor: Rumor
-  wraps: MessageWrap[]
+  wraps: { recipient: string; wrap: NostrEvent }[]
 }
 ```
 
@@ -68,21 +62,16 @@ Creates one chat rumor and gift-wraps it individually for every receiver and, by
 | `kind` | `14 \| 15 \| 7?` | `14` chat message (default), `15` file message, `7` reaction |
 | `content` | `string` | Message text, file URL (kind 15) or reaction content (kind 7) |
 | `tags` | `string[][]?` | Extra rumor tags: `['e', id]` for replies, `['subject', topic]`, file tags for kind 15, `e`/`k` for kind 7 |
-| `recipients` | `string[]` | Receivers' public keys (64-char lowercase hex). A `p` tag is added to the rumor for each one not already tagged |
+| `recipients` | `string[]` | Receivers' public keys (hex). Each gets a `p` tag on the rumor |
 | `senderSecretKey` | `Uint8Array` | Sender's secret key (32 bytes) |
 | `selfCopy` | `boolean?` | Also wrap for the sender, so the message shows on their other devices and after a restore (default `true`) |
 | `expiration` | `number?` | NIP-40 expiration in unix seconds, set on every gift wrap and seal (disappearing messages) |
-| `created_at` | `number?` | Rumor timestamp in unix seconds (default now) |
 
 **Returns:** `{ rumor, wraps }` - the shared rumor and one `{ recipient, wrap }` per copy: receivers in input order, the sender's copy last.
 
 Recipients are deduplicated. The sender is wrapped at most once, by `selfCopy`, even when listed in `recipients` (listing only the sender makes a note to self).
 
-**Throws:** `Error` on:
-- Unsupported kind (not 14, 15 or 7)
-- Empty `recipients`, or a pubkey that is not 64-char lowercase hex
-- `expiration` that is not a positive integer, or `created_at` that is not a non-negative integer
-- Nothing to wrap (only the sender is addressed and `selfCopy` is `false`)
+**Throws:** `Error` when `recipients` is empty.
 
 ```ts
 const { rumor, wraps } = nip17.createMessage({
@@ -267,29 +256,6 @@ const wrap = nip17.wrapDirectMessage('Hello Bob!', aliceSk, bobPk)
 const dm = nip17.unwrapDirectMessage(wrap, bobSk)
 console.log(dm.sender)  // Alice's real pubkey
 console.log(dm.content) // "Hello Bob!"
-```
-
-### Group Chat With Sender Copy
-
-```ts
-import { generateSecretKey, getPublicKey, nip17 } from 'nostr-core'
-
-const aliceSk = generateSecretKey()
-const alicePk = getPublicKey(aliceSk)
-const bobSk = generateSecretKey()
-const carolSk = generateSecretKey()
-
-const { rumor, wraps } = nip17.createMessage({
-  content: 'Lunch at noon?',
-  recipients: [getPublicKey(bobSk), getPublicKey(carolSk)],
-  senderSecretKey: aliceSk,
-})
-
-// Bob, Carol and Alice (on another device) each open their own copy
-const bobView = nip17.unwrapMessage(wraps[0].wrap, bobSk)
-const aliceView = nip17.unwrapMessage(wraps[2].wrap, aliceSk)
-console.log(bobView.rumor.id === rumor.id)   // true
-console.log(aliceView.sender === alicePk)    // true
 ```
 
 ## How It Works

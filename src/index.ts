@@ -180,7 +180,7 @@ export type { RelayInfo } from './nip11.js'
 
 // NIP-17
 export { wrapDirectMessage, unwrapDirectMessage, createMessage, unwrapMessage } from './nip17.js'
-export type { DirectMessage, MessageKind, MessageParams, MessageWrap, UnwrappedMessage } from './nip17.js'
+export type { DirectMessage, MessageKind, MessageParams, UnwrappedMessage } from './nip17.js'
 
 // NIP-21
 export { encodeNostrURI, decodeNostrURI, isNostrURI } from './nip21.js'

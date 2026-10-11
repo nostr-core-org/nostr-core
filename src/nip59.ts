@@ -31,10 +31,6 @@ export type GiftWrapOptions = {
 
 // Helpers
 
-function copyTags(tags: string[][] | undefined): string[][] {
-  return (tags ?? []).map(tag => [...tag])
-}
-
 function randomTimestamp(): number {
   // Randomize up to 2 days in the past
   const twoDays = 2 * 24 * 60 * 60
@@ -65,7 +61,7 @@ export function createSeal(
   return finalizeEvent(
     {
       kind: SEAL_KIND,
-      tags: copyTags(opts?.tags),
+      tags: opts?.tags ?? [],
       content: encrypted,
       created_at: randomTimestamp(),
     },
@@ -85,8 +81,7 @@ export function createWrap(
   return finalizeEvent(
     {
       kind: GIFT_WRAP_KIND,
-      // The routing 'p' tag always comes first; extra tags follow it.
-      tags: [['p', recipientPubkey], ...copyTags(opts?.tags)],
+      tags: [['p', recipientPubkey], ...(opts?.tags ?? [])],
       content: encrypted,
       created_at: randomTimestamp(),
     },
