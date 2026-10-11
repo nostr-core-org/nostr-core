@@ -6,8 +6,68 @@ import { normalizeURL } from './utils.js'
 export type SubscriptionParams = {
   onevent?: (evt: NostrEvent) => void
   oneose?: () => void
+  /**
+   * Called once when the subscription ends. A relay's `CLOSED` reason is passed
+   * through as sent, so it may carry a NIP-01 prefix: read it with
+   * {@link parseRelayReason}, e.g. to react to `auth-required:`.
+   */
   onclose?: (reason: string) => void
   eoseTimeout?: number
+}
+
+/**
+ * The machine-readable prefixes a relay puts in front of the human-readable
+ * text of an `OK` or `CLOSED` message (`"<prefix>: <message>"`): the eight
+ * standardised in NIP-01, plus `auth-required` from NIP-42.
+ */
+export const RELAY_REASON_PREFIXES = [
+  'duplicate',
+  'pow',
+  'blocked',
+  'rate-limited',
+  'invalid',
+  'restricted',
+  'mute',
+  'error',
+  'auth-required',
+] as const
+
+export type RelayReasonPrefix = (typeof RELAY_REASON_PREFIXES)[number]
+
+export type ParsedRelayReason = {
+  /** The NIP-01 / NIP-42 prefix, when the reason starts with a known one. */
+  prefix?: RelayReasonPrefix
+  /** The human-readable text without the prefix, trimmed. */
+  message: string
+}
+
+const KNOWN_REASON_PREFIXES: ReadonlySet<string> = new Set(RELAY_REASON_PREFIXES)
+
+/**
+ * Split the reason of an `OK` or `CLOSED` message into its machine-readable
+ * prefix and the human-readable rest.
+ *
+ * ```ts
+ * parseRelayReason('rate-limited: slow down') // { prefix: 'rate-limited', message: 'slow down' }
+ * parseRelayReason('something went wrong')    // { message: 'something went wrong' }
+ * ```
+ *
+ * Relays are third parties, so this is lenient and never throws: the prefix
+ * matches case-insensitively and ignores surrounding whitespace, a bare
+ * keyword without a colon (`duplicate`) still counts, and text without a
+ * known prefix comes back whole (trimmed) in `message`. A non-string reason is
+ * treated as an empty one.
+ */
+export function parseRelayReason(reason: string): ParsedRelayReason {
+  if (typeof reason !== 'string') return { message: '' }
+  const text = reason.trim()
+  const colon = text.indexOf(':')
+  const head = (colon === -1 ? text : text.slice(0, colon)).trim().toLowerCase()
+  if (!KNOWN_REASON_PREFIXES.has(head)) return { message: text }
+  return {
+    prefix: head as RelayReasonPrefix,
+    message: colon === -1 ? '' : text.slice(colon + 1).trim(),
+  }
 }
 
 /**

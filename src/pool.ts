@@ -1,4 +1,11 @@
-import { Relay, Subscription, type ReconnectOptions, type SubscriptionParams } from './relay.js'
+import {
+  Relay,
+  Subscription,
+  parseRelayReason,
+  type ReconnectOptions,
+  type RelayReasonPrefix,
+  type SubscriptionParams,
+} from './relay.js'
 import type { NostrEvent } from './event.js'
 import type { Filter } from './filter.js'
 import { normalizeURL } from './utils.js'
@@ -9,6 +16,47 @@ export type PoolSubscribeParams = SubscriptionParams & {
   maxWait?: number
   id?: string
   label?: string
+}
+
+/** What one relay made of a {@link RelayPool.publishDetailed} call. */
+export type PublishResult = {
+  /** Normalised relay URL. */
+  url: string
+  /** True when the relay answered `OK` with `true`. */
+  ok: boolean
+  /**
+   * The relay's `OK` reason as sent (may be empty when `ok` is true), or the
+   * local failure when there was no `OK` at all: `connection failed`,
+   * `connection timed out`, `publish timed out`, `relay connection closed`, ...
+   */
+  reason: string
+  /** NIP-01 / NIP-42 prefix of `reason`, see {@link parseRelayReason}. */
+  prefix?: RelayReasonPrefix
+  /** `reason` without its prefix, trimmed. */
+  message: string
+}
+
+export type PublishDetailedOptions = {
+  /**
+   * Called once per relay as soon as that relay's outcome is known, e.g. to
+   * show "sent" on the first `ok: true` without waiting for slower relays.
+   * Errors it throws are ignored.
+   */
+  onResult?: (result: PublishResult) => void
+}
+
+/** Like normalizeURL, but an unparsable URL is kept as given so it can fail per relay. */
+function normalizeOrKeep(url: string): string {
+  try {
+    return normalizeURL(url)
+  } catch {
+    return url
+  }
+}
+
+function publishResult(url: string, ok: boolean, reason: string): PublishResult {
+  const { prefix, message } = parseRelayReason(reason)
+  return prefix ? { url, ok, reason, prefix, message } : { url, ok, reason, message }
 }
 
 export class RelayPool {
@@ -106,6 +154,39 @@ export class RelayPool {
     return results
       .filter((r): r is PromiseFulfilledResult<string> => r.status === 'fulfilled')
       .map(r => r.value)
+  }
+
+  /**
+   * Publish an event to multiple relays and report every relay's outcome.
+   *
+   * Unlike {@link publish}, nothing is dropped: there is one result per
+   * (normalised, deduplicated) relay URL, in input order. Relay trouble never
+   * rejects the promise: a failed connection, a timeout or an `OK false` all
+   * become `ok: false` with a `reason`.
+   */
+  async publishDetailed(
+    relayUrls: string[],
+    event: NostrEvent,
+    opts?: PublishDetailedOptions,
+  ): Promise<PublishResult[]> {
+    const urls = [...new Set(relayUrls.map(normalizeOrKeep))]
+    return Promise.all(
+      urls.map(async url => {
+        let result: PublishResult
+        try {
+          const relay = await this.ensureRelay(url)
+          result = publishResult(url, true, (await relay.publish(event)) ?? '')
+        } catch (err) {
+          result = publishResult(url, false, err instanceof Error ? err.message : String(err))
+        }
+        try {
+          opts?.onResult?.(result)
+        } catch {
+          // A throwing callback must not cost the caller the other results.
+        }
+        return result
+      }),
+    )
   }
 
   async querySync(relayUrls: string[], filter: Filter, params?: { maxWait?: number }): Promise<NostrEvent[]> {

@@ -704,8 +704,21 @@ sub.close()
 ### Publishing to Multiple Relays
 
 ```ts
-const results = await pool.publish(relays, event)
+const results = await pool.publish(relays, event) // successful OK messages only
 ```
+
+Per-relay outcomes (one result per relay, never rejects for relay trouble):
+
+```ts
+const results = await pool.publishDetailed(relays, event, {
+  onResult(r) { if (r.ok) console.log('sent via', r.url) }, // fires as each relay answers
+})
+for (const r of results) {
+  if (!r.ok) console.log(r.url, r.prefix, r.message) // e.g. 'rate-limited', 'slow down'
+}
+```
+
+`parseRelayReason(reason)` splits any `OK` / `CLOSED` reason (e.g. the one passed to `onclose`) into `{ prefix?, message }`.
 
 ### Querying
 
@@ -1716,6 +1729,8 @@ await relay.connect(opts?: { timeout?: number }): Promise<void>
 await relay.publish(event: NostrEvent): Promise<string>
 ```
 
+Resolves with the OK reason. Rejects on timeout or `OK false`; on `OK false` the error message is the relay's reason as sent (read it with `parseRelayReason`).
+
 ### subscribe
 
 ```ts
@@ -1738,7 +1753,7 @@ relay.close(): void
 | `eosed` | `boolean` | Whether EOSE received |
 | `onevent` | `(evt: NostrEvent) => void` | Event callback |
 | `oneose` | `(() => void)?` | EOSE callback |
-| `onclose` | `((reason: string) => void)?` | Close callback |
+| `onclose` | `((reason: string) => void)?` | Close callback; a relay's `CLOSED` reason is passed as sent, read it with `parseRelayReason` |
 
 `subscription.reset()` clears the per-connection EOSE state so the sub can be re-fired on a fresh socket; the relay calls it during a reconnect.
 
@@ -1752,6 +1767,32 @@ type SubscriptionParams = {
   eoseTimeout?: number
 }
 ```
+
+## parseRelayReason
+
+```ts
+import { parseRelayReason, RELAY_REASON_PREFIXES } from 'nostr-core'
+
+parseRelayReason(reason: string): ParsedRelayReason
+
+type RelayReasonPrefix =
+  | 'duplicate' | 'pow' | 'blocked' | 'rate-limited' | 'invalid'
+  | 'restricted' | 'mute' | 'error' | 'auth-required'
+
+type ParsedRelayReason = { prefix?: RelayReasonPrefix; message: string }
+```
+
+Splits an `OK` / `CLOSED` reason (`"<prefix>: <message>"`, NIP-01 prefixes plus NIP-42 `auth-required`) into its machine-readable prefix and the trimmed human-readable rest.
+
+```ts
+parseRelayReason('rate-limited: slow down') // { prefix: 'rate-limited', message: 'slow down' }
+parseRelayReason('something went wrong')    // { message: 'something went wrong' }
+```
+
+- Never throws; a non-string reason counts as empty.
+- Prefix match is case-insensitive and whitespace-tolerant (`' ERROR :  boom '` -> `error` / `boom`).
+- Only a whole known word counts (`foo: bar`, `unblocked: x` -> no prefix); a bare keyword (`duplicate`) counts with an empty message.
+- `RELAY_REASON_PREFIXES` is the same list as a readonly array.
 
 ---
 
@@ -1796,6 +1837,30 @@ The `oneose` callback fires when **all** relays have sent EOSE.
 await pool.publish(relayUrls: string[], event: NostrEvent): Promise<string[]>
 ```
 
+Returns only the OK messages of relays that accepted; failures are dropped. Use `publishDetailed` for per-relay outcomes.
+
+### publishDetailed
+
+```ts
+await pool.publishDetailed(
+  relayUrls: string[],
+  event: NostrEvent,
+  opts?: { onResult?: (result: PublishResult) => void }
+): Promise<PublishResult[]>
+```
+
+- One result per relay URL (normalised, deduplicated), in input order.
+- Never rejects for relay trouble: connection failure, timeout and `OK false` all become `ok: false` with a `reason`.
+- `onResult` fires once per relay as soon as its outcome is known (resolve "sent" on the first `ok: true`). Errors it throws are ignored.
+- A `duplicate:` refusal means the relay already has the event; most apps treat it as delivered.
+
+```ts
+const firstAccept = new Promise<PublishResult | null>(resolve => {
+  pool.publishDetailed(relays, event, { onResult: r => { if (r.ok) resolve(r) } })
+    .then(() => resolve(null)) // nobody accepted
+})
+```
+
 ### querySync
 
 ```ts
@@ -1824,6 +1889,17 @@ type PoolSubscribeParams = SubscriptionParams & {
   id?: string
   label?: string
 }
+
+type PublishResult = {
+  url: string                 // normalised relay URL
+  ok: boolean                 // relay answered OK true
+  reason: string              // relay's OK reason as sent, or the local failure
+                              // ('connection failed', 'connection timed out', 'publish timed out', ...)
+  prefix?: RelayReasonPrefix  // parsed from reason, see parseRelayReason
+  message: string             // reason without its prefix, trimmed
+}
+
+type PublishDetailedOptions = { onResult?: (result: PublishResult) => void }
 ```
 
 ---
