@@ -1662,6 +1662,7 @@ import { Relay } from 'nostr-core'
 new Relay(url: string, opts?: {
   websocketImplementation?: typeof WebSocket
   reconnect?: ReconnectOptions | false
+  authSigner?: AuthSigner  // opt-in NIP-42, see below
 })
 ```
 
@@ -1688,6 +1689,25 @@ type ReconnectOptions = {
 - A replayed REQ is a fresh REQ, so the relay resends matching history and `oneose` fires again — DEDUPE BY EVENT ID.
 - Browsers cannot send WS ping frames, so reconnect-on-close is the standard remedy.
 
+## NIP-42 Authentication
+
+```ts
+type AuthSigner = (template: EventTemplate) => Promise<NostrEvent> | NostrEvent
+
+const relay = new Relay('wss://auth.nostr1.com', { authSigner: (t) => finalizeEvent(t, sk) })
+// NIP-07: (t) => window.nostr.signEvent(t)   NIP-46 / Signer: (t) => signer.signEvent(t)
+```
+
+Opt-in. Without `authSigner` behaviour is unchanged (CLOSED / OK false reach `onclose` / the publish rejection). With it:
+
+- Every AUTH challenge is answered automatically, ONCE per challenge; concurrent needs share one answer, one AUTH in flight at a time.
+- `CLOSED "auth-required: ..."` on a subscription -> authenticate (waiting up to `authTimeout` for a challenge if none arrived yet), then re-send that REQ ONCE with the same id. A second `auth-required:` closes it for real (`onclose` gets the relay's reason) - no loop. The EOSE timer is paused meanwhile.
+- `OK false "auth-required: ..."` on a publish -> authenticate, re-send the EVENT ONCE, settle the promise from the retried OK.
+- Reconnect: the challenge is cleared, replayed REQs take the same path and authenticate with the NEW challenge, so subscriptions survive a drop.
+- Signer throws / rejects / exceeds `authTimeout`, or the relay rejects the AUTH -> the sub closes and the publish rejects with `auth-required: <why>`; never an unhandled rejection.
+- If you set `onauth` yourself it stays in charge of challenges; `authSigner` is then only used when a request is refused with `auth-required:` and the current challenge is not authenticated yet.
+- Every relay that challenges learns the signer's pubkey: use a separate Relay/RelayPool with a signer for inbox relays only.
+
 ## Properties
 
 | Property | Type | Default | Description |
@@ -1697,6 +1717,9 @@ type ReconnectOptions = {
 | `reconnecting` | `boolean` | - | Whether a retry is pending (getter) |
 | `eoseTimeout` | `number` | `4400` | EOSE timeout in ms |
 | `publishTimeout` | `number` | `4400` | Publish OK timeout in ms |
+| `authTimeout` | `number` | `10000` | Wait for a challenge / for `authSigner` to sign, in ms |
+| `challenge` | `string?` | - | Latest NIP-42 challenge; cleared when the connection drops |
+| `onauth` | `((challenge: string) => void)?` | - | Called on every AUTH challenge; when set, you answer it with `relay.auth()` |
 | `openSubs` | `Map<string, Subscription>` | - | Active subscriptions, preserved across drops |
 | `ondisconnect` | `((reason: string) => void)?` | - | Established connection dropped, before a retry |
 | `onreconnect` | `(() => void)?` | - | Reconnected and REQs replayed |
@@ -1722,6 +1745,12 @@ await relay.publish(event: NostrEvent): Promise<string>
 relay.subscribe(filters: Filter[], params: SubscriptionParams): Subscription
 ```
 
+### auth
+
+```ts
+await relay.auth(event: NostrEvent): Promise<string>  // send a signed kind 22242 answer, wait for OK
+```
+
 ### close
 
 ```ts
@@ -1736,6 +1765,7 @@ relay.close(): void
 | `id` | `string` | Subscription ID (readonly) |
 | `closed` | `boolean` | Whether closed |
 | `eosed` | `boolean` | Whether EOSE received |
+| `authRetried` | `boolean` | REQ already re-sent after `auth-required` on this connection |
 | `onevent` | `(evt: NostrEvent) => void` | Event callback |
 | `oneose` | `(() => void)?` | EOSE callback |
 | `onclose` | `((reason: string) => void)?` | Close callback |
@@ -1771,8 +1801,12 @@ import { RelayPool } from 'nostr-core'
 new RelayPool(opts?: {
   websocketImplementation?: typeof WebSocket
   maxWaitForConnection?: number  // default: 3000
+  reconnect?: ReconnectOptions | false  // applied to every relay
+  authSigner?: AuthSigner  // opt-in NIP-42, given to every relay the pool creates
 })
 ```
+
+Pooled relays never get an `onauth` before they connect, so on AUTH relays (NIP-17 inboxes, `kind:1059`) pass `authSigner`: challenges are answered and `auth-required` REQs/EVENTs are retried once after AUTH (see Relay > NIP-42 Authentication). Keep a separate pool without a signer for public queries.
 
 ## Methods
 
@@ -2477,12 +2511,22 @@ function createAuthEvent(opts: { relay: string, challenge: string }, secretKey: 
 function verifyAuthEvent(event: NostrEvent, challenge: string, relayUrl: string): boolean
 ```
 
-## Relay.onauth / Relay.auth
+## Relay.onauth / Relay.auth / Relay.challenge
 
 ```ts
 relay.onauth = (challenge: string) => void  // callback for AUTH messages
 relay.auth(event: NostrEvent): Promise<string>  // send AUTH response
+relay.challenge: string | undefined  // latest challenge, cleared on disconnect
 ```
+
+## Automatic authentication
+
+```ts
+new Relay(url, { authSigner: (t) => finalizeEvent(t, sk) })   // or signer.signEvent(t)
+new RelayPool({ authSigner: (t) => signer.signEvent(t) })
+```
+
+Answers each challenge once and re-sends a REQ/EVENT refused with `auth-required:` once after AUTH, also after a reconnect. See API Reference: Relay > NIP-42 Authentication.
 
 ---
 

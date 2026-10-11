@@ -221,6 +221,8 @@ All signers: signer.getPublicKey(), signer.signEvent(template), signer.nip04?.en
     import { nip42 } from 'nostr-core'
     nip42.createAuthEvent({ relay: relayUrl, challenge }, sk)
     relay.onauth = (challenge) => { relay.auth(nip42.createAuthEvent(...)) }
+    // or let the relay/pool answer challenges and retry auth-required REQs/EVENTs once:
+    new Relay(url, { authSigner: (t) => finalizeEvent(t, sk) }) // also new RelayPool({ authSigner })
 
 28. PROXY TAGS (NIP-48)
     import { nip48 } from 'nostr-core'

@@ -1,6 +1,7 @@
-import type { NostrEvent } from './event.js'
+import type { EventTemplate, NostrEvent } from './event.js'
 import { verifyEvent } from './event.js'
 import { matchFilters, type Filter } from './filter.js'
+import { createAuthEventTemplate } from './nip42.js'
 import { normalizeURL } from './utils.js'
 
 export type SubscriptionParams = {
@@ -37,6 +38,28 @@ export type ReconnectOptions = {
 
 type ResolvedReconnectOptions = Required<ReconnectOptions>
 
+/**
+ * Signs a NIP-42 AUTH event (kind 22242) for a relay challenge.
+ *
+ * Works with a secret key (`t => finalizeEvent(t, sk)`), a NIP-07 extension
+ * (`t => window.nostr.signEvent(t)`) or a NIP-46 signer (`t => signer.signEvent(t)`).
+ */
+export type AuthSigner = (template: EventTemplate) => Promise<NostrEvent> | NostrEvent
+
+export type RelayOptions = {
+  websocketImplementation?: typeof WebSocket
+  reconnect?: ReconnectOptions | false
+  /**
+   * Opt-in NIP-42 authentication. When set, the relay answers AUTH challenges
+   * itself, and a REQ closed or an EVENT refused with `auth-required:` is
+   * re-sent once after authenticating. Every relay that challenges learns the
+   * signer's pubkey. Without it, behaviour is unchanged.
+   */
+  authSigner?: AuthSigner
+}
+
+const AUTH_REQUIRED = 'auth-required:'
+
 const DEFAULT_RECONNECT: ResolvedReconnectOptions = {
   enabled: true,
   initialDelay: 1000,
@@ -53,11 +76,34 @@ function unrefTimer(timer: ReturnType<typeof setTimeout>): ReturnType<typeof set
   return timer
 }
 
+function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const timeout = new Promise<never>((_, reject) => {
+    timer = unrefTimer(setTimeout(() => reject(new Error(message)), ms))
+  })
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer))
+}
+
+function errorMessage(err: unknown): string {
+  return (err as Error)?.message || String(err)
+}
+
+type OpenPublish = {
+  resolve: (reason: string) => void
+  reject: (err: Error) => void
+  timeout: ReturnType<typeof setTimeout>
+  /** The EVENT frame of a publish, kept so an `auth-required` refusal can re-send it once. */
+  frame?: string
+  authRetried?: boolean
+}
+
 export class Subscription {
   public readonly relay: Relay
   public readonly id: string
   public closed = false
   public eosed = false
+  /** True once this REQ was re-sent after an `auth-required` CLOSED on the current connection. */
+  public authRetried = false
   public filters: Filter[]
 
   public onevent: (evt: NostrEvent) => void
@@ -77,7 +123,14 @@ export class Subscription {
 
   fire() {
     this.relay.send('["REQ","' + this.id + '",' + JSON.stringify(this.filters).substring(1))
+    clearTimeout(this.eoseTimeoutHandle)
     this.eoseTimeoutHandle = setTimeout(() => this.receivedEose(), this.relay.eoseTimeout)
+  }
+
+  /** Stop the EOSE timer while the relay authenticates; {@link fire} re-arms it. */
+  pauseEoseTimeout() {
+    clearTimeout(this.eoseTimeoutHandle)
+    this.eoseTimeoutHandle = undefined
   }
 
   /**
@@ -89,6 +142,7 @@ export class Subscription {
     clearTimeout(this.eoseTimeoutHandle)
     this.eoseTimeoutHandle = undefined
     this.eosed = false
+    this.authRetried = false
   }
 
   receivedEose() {
@@ -119,8 +173,12 @@ export class Relay {
   private _connected = false
   public eoseTimeout = 4400
   public publishTimeout = 4400
+  /** How long to wait for an AUTH challenge, and for `authSigner` to sign it, in ms. */
+  public authTimeout = 10000
   public openSubs = new Map<string, Subscription>()
   public onauth: ((challenge: string) => void) | undefined
+  /** The latest NIP-42 challenge on the current connection; cleared when it drops. */
+  public challenge: string | undefined
 
   /** Fired when an established connection drops, before a retry is scheduled. */
   public ondisconnect: ((reason: string) => void) | undefined
@@ -130,11 +188,7 @@ export class Relay {
   public onreconnectfailed: ((err: Error) => void) | undefined
 
   private connectionPromise: Promise<void> | undefined
-  private openEventPublishes = new Map<string, {
-    resolve: (reason: string) => void
-    reject: (err: Error) => void
-    timeout: ReturnType<typeof setTimeout>
-  }>()
+  private openEventPublishes = new Map<string, OpenPublish>()
   private ws: WebSocket | undefined
   private serial = 0
   private _WebSocket: typeof WebSocket
@@ -145,8 +199,17 @@ export class Relay {
   private closedByUser = false
   private hasEverConnected = false
 
-  constructor(url: string, opts?: { websocketImplementation?: typeof WebSocket; reconnect?: ReconnectOptions | false }) {
+  private authSigner: AuthSigner | undefined
+  /** Bumped whenever the socket goes away, so late auth results for an old socket are ignored. */
+  private connectionGen = 0
+  private authedChallenge: string | undefined
+  /** The one answer per challenge; later answers queue behind it. */
+  private authAttempt: { challenge: string; result: Promise<void> } | undefined
+  private challengeWaiters = new Set<{ resolve: (challenge: string) => void; reject: (err: Error) => void }>()
+
+  constructor(url: string, opts?: RelayOptions) {
     this.url = normalizeURL(url)
+    this.authSigner = opts?.authSigner
     this._WebSocket = opts?.websocketImplementation || WebSocket
     this.reconnectOptions =
       opts?.reconnect === false
@@ -223,17 +286,12 @@ export class Relay {
   }
 
   async publish(event: NostrEvent): Promise<string> {
+    const frame = '["EVENT",' + JSON.stringify(event) + ']'
     const ret = new Promise<string>((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        const ep = this.openEventPublishes.get(event.id)
-        if (ep) {
-          ep.reject(new Error('publish timed out'))
-          this.openEventPublishes.delete(event.id)
-        }
-      }, this.publishTimeout)
-      this.openEventPublishes.set(event.id, { resolve, reject, timeout })
+      const timeout = this._publishTimer(event.id, 'publish timed out')
+      this.openEventPublishes.set(event.id, { resolve, reject, timeout, frame })
     })
-    this.send('["EVENT",' + JSON.stringify(event) + ']')
+    this.send(frame)
     return ret
   }
 
@@ -257,22 +315,19 @@ export class Relay {
 
   async auth(event: NostrEvent): Promise<string> {
     const ret = new Promise<string>((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        const ep = this.openEventPublishes.get(event.id)
-        if (ep) {
-          ep.reject(new Error('auth timed out'))
-          this.openEventPublishes.delete(event.id)
-        }
-      }, this.publishTimeout)
+      const timeout = this._publishTimer(event.id, 'auth timed out')
       this.openEventPublishes.set(event.id, { resolve, reject, timeout })
     })
     this.send('["AUTH",' + JSON.stringify(event) + ']')
-    return ret
+    const reason = await ret
+    this.authedChallenge = event.tags.find(t => t[0] === 'challenge')?.[1]
+    return reason
   }
 
   close() {
     this.closedByUser = true
     this._cancelReconnect()
+    this._resetAuth('relay connection closed by us')
     this.closeAllSubscriptions('relay connection closed by us')
     this._connected = false
     this.connectionPromise = undefined
@@ -283,6 +338,7 @@ export class Relay {
   }
 
   private _handleDisconnect(reason: string) {
+    this._resetAuth(reason)
     // In-flight publishes can never be answered on a dead socket.
     this._failOpenEventPublishes(reason)
 
@@ -362,6 +418,96 @@ export class Relay {
     this.openEventPublishes.clear()
   }
 
+  private _publishTimer(id: string, message: string): ReturnType<typeof setTimeout> {
+    return setTimeout(() => {
+      const ep = this.openEventPublishes.get(id)
+      if (ep) {
+        ep.reject(new Error(message))
+        this.openEventPublishes.delete(id)
+      }
+    }, this.publishTimeout)
+  }
+
+  /** Forget the challenge and any authentication; it belonged to the old socket. */
+  private _resetAuth(reason: string) {
+    this.connectionGen++
+    this.challenge = undefined
+    this.authedChallenge = undefined
+    this.authAttempt = undefined
+    for (const waiter of [...this.challengeWaiters]) waiter.reject(new Error(reason))
+  }
+
+  private _isAuthRequired(reason: unknown): boolean {
+    return this.authSigner !== undefined && typeof reason === 'string' && reason.startsWith(AUTH_REQUIRED)
+  }
+
+  /**
+   * Authenticate with `authSigner` for the current challenge, waiting for one
+   * if the relay has not sent it yet. Each challenge is answered at most once:
+   * callers share the same attempt and its outcome.
+   */
+  private _authenticate(): Promise<void> {
+    const challenge = this.challenge
+    if (challenge === undefined) return this._nextChallenge().then(() => this._authenticate())
+    if (challenge === this.authedChallenge) return Promise.resolve()
+    if (this.authAttempt?.challenge !== challenge) {
+      const previous = this.authAttempt?.result.catch(() => {}) ?? Promise.resolve()
+      const result = previous.then(() => this._answerChallenge(challenge))
+      result.catch(() => {})
+      this.authAttempt = { challenge, result }
+    }
+    return this.authAttempt.result
+  }
+
+  private async _answerChallenge(challenge: string): Promise<void> {
+    const gen = this.connectionGen
+    const template = createAuthEventTemplate({ relay: this.url, challenge })
+    const event = await withTimeout(Promise.resolve(this.authSigner!(template)), this.authTimeout, 'auth signer timed out')
+    if (gen !== this.connectionGen) throw new Error('relay connection closed')
+    await this.auth(event)
+  }
+
+  private _nextChallenge(): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const waiter = {
+        resolve: (challenge: string) => {
+          clearTimeout(timer)
+          this.challengeWaiters.delete(waiter)
+          resolve(challenge)
+        },
+        reject: (err: Error) => {
+          clearTimeout(timer)
+          this.challengeWaiters.delete(waiter)
+          reject(err)
+        },
+      }
+      const timer = unrefTimer(setTimeout(() => waiter.reject(new Error('no auth challenge received')), this.authTimeout))
+      this.challengeWaiters.add(waiter)
+    })
+  }
+
+  /**
+   * Authenticate, then run `retry`. `fail` gets a reason when that is not
+   * possible. Results that arrive after the socket changed are dropped: the
+   * reconnect replays subscriptions, and publishes were already rejected.
+   */
+  private _retryAfterAuth(retry: () => void, fail: (reason: string) => void) {
+    const gen = this.connectionGen
+    this._authenticate().then(
+      () => {
+        if (gen !== this.connectionGen) return
+        try {
+          retry()
+        } catch (err) {
+          fail(errorMessage(err))
+        }
+      },
+      err => {
+        if (gen === this.connectionGen) fail(`${AUTH_REQUIRED} ${errorMessage(err)}`)
+      },
+    )
+  }
+
   private closeAllSubscriptions(reason: string) {
     for (const [, sub] of this.openSubs) {
       sub.close(reason)
@@ -399,23 +545,56 @@ export class Relay {
         const ok = data[2] as boolean
         const reason = data[3] as string
         const ep = this.openEventPublishes.get(id)
-        if (ep) {
-          clearTimeout(ep.timeout)
-          if (ok) ep.resolve(reason)
-          else ep.reject(new Error(reason))
-          this.openEventPublishes.delete(id)
+        if (!ep) return
+        clearTimeout(ep.timeout)
+        if (!ok && ep.frame && !ep.authRetried && this._isAuthRequired(reason)) {
+          ep.authRetried = true
+          const current = () => this.openEventPublishes.get(id) === ep
+          this._retryAfterAuth(
+            () => {
+              if (!current()) return
+              ep.timeout = this._publishTimer(id, 'publish timed out')
+              this.send(ep.frame!)
+            },
+            failReason => {
+              if (!current()) return
+              clearTimeout(ep.timeout)
+              this.openEventPublishes.delete(id)
+              ep.reject(new Error(failReason))
+            },
+          )
+          return
         }
+        if (ok) ep.resolve(reason)
+        else ep.reject(new Error(reason))
+        this.openEventPublishes.delete(id)
         return
       }
       case 'CLOSED': {
         const so = this.openSubs.get(data[1] as string)
         if (!so) return
-        so.close(data[2] as string)
+        const reason = data[2] as string
+        if (!so.authRetried && this._isAuthRequired(reason)) {
+          so.authRetried = true
+          so.pauseEoseTimeout()
+          this._retryAfterAuth(
+            () => {
+              if (!so.closed) so.fire()
+            },
+            failReason => so.close(failReason),
+          )
+          return
+        }
+        so.close(reason)
         return
       }
       case 'AUTH': {
         const challenge = data[1] as string
-        this.onauth?.(challenge)
+        this.challenge = challenge
+        for (const waiter of [...this.challengeWaiters]) waiter.resolve(challenge)
+        // An explicit onauth handler stays in charge of answering challenges.
+        if (this.onauth) this.onauth(challenge)
+        else if (this.authSigner) this._authenticate().catch(() => {})
         return
       }
       case 'NOTICE': {

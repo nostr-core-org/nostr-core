@@ -134,6 +134,22 @@ function handleAuth(event: NostrEvent, expectedChallenge: string) {
 relay.close()
 ```
 
+## Automatic Authentication
+
+Instead of wiring `onauth` by hand, give the relay (or pool) a signer. It answers
+each challenge once, and re-sends a REQ or EVENT that was refused with
+`auth-required:` once after authenticating, including after a reconnect:
+
+```ts
+const relay = new Relay('wss://relay.example.com', {
+  authSigner: (template) => finalizeEvent(template, sk), // or signer.signEvent(template)
+})
+const pool = new RelayPool({ authSigner: (template) => signer.signEvent(template) })
+```
+
+See [Relay: NIP-42 Authentication](/api/relay#nip-42-authentication) for the
+exact rules.
+
 ## How It Works
 
 - The relay sends an `AUTH` message containing a challenge string to the client
@@ -144,4 +160,5 @@ relay.close()
 - Relays use authentication to restrict access (e.g., private relays, rate limiting)
 - The `relay.onauth` callback is triggered when the relay issues an AUTH challenge
 - The `relay.auth()` method sends the signed auth event back to the relay
-- Authentication is per-connection and must be repeated on reconnection
+- Authentication is per-connection and must be repeated on reconnection (an `authSigner` does this for you)
+- The latest challenge is kept in `relay.challenge` until the connection drops

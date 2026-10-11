@@ -1033,6 +1033,13 @@ relay.onauth = async (challenge) => {
   await relay.auth(authEvent)
 }
 
+// Or let the relay do it: answers each challenge once and re-sends a REQ/EVENT
+// refused with "auth-required:" once after AUTH (also after a reconnect)
+const authRelay = new Relay('wss://auth.nostr1.com', {
+  authSigner: (template) => finalizeEvent(template, secretKey), // or signer.signEvent(template)
+})
+const inboxPool = new RelayPool({ authSigner: (template) => signer.signEvent(template) })
+
 // Server-side verification
 const valid = nip42.verifyAuthEvent(event, challenge, relayUrl) // boolean
 ```

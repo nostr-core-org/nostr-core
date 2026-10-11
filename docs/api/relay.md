@@ -11,10 +11,13 @@ import { Relay } from 'nostr-core'
 ## Constructor
 
 ```ts
-new Relay(url: string, opts?: {
+new Relay(url: string, opts?: RelayOptions)
+
+type RelayOptions = {
   websocketImplementation?: typeof WebSocket
   reconnect?: ReconnectOptions | false
-})
+  authSigner?: AuthSigner
+}
 ```
 
 | Parameter | Type | Description |
@@ -22,6 +25,7 @@ new Relay(url: string, opts?: {
 | `url` | `string` | Relay WebSocket URL |
 | `opts.websocketImplementation` | `typeof WebSocket?` | Custom WebSocket class |
 | `opts.reconnect` | `ReconnectOptions \| false` | Auto-reconnect settings; `false` disables it |
+| `opts.authSigner` | `AuthSigner?` | Opt-in NIP-42 signer: answers challenges and retries `auth-required` refusals once. See [NIP-42 Authentication](#nip-42-authentication) |
 
 The URL is normalized automatically (see [`normalizeURL`](/api/utils#normalizeurl)).
 
@@ -78,6 +82,67 @@ Browsers cannot send WebSocket ping frames, so client-side keepalive is not an
 option; reconnect-on-close is the standard remedy.
 :::
 
+## NIP-42 Authentication
+
+Some relays only serve or accept certain events to an authenticated client -
+NIP-17 inbox relays, for example, answer a `kind:1059` REQ with
+`CLOSED "auth-required: ..."` until the client has answered their AUTH
+challenge. Pass an `authSigner` and the relay handles this itself:
+
+```ts
+type AuthSigner = (template: EventTemplate) => Promise<NostrEvent> | NostrEvent
+```
+
+```ts
+import { Relay, finalizeEvent } from 'nostr-core'
+
+// Secret key
+const relay = new Relay('wss://auth.nostr1.com', {
+  authSigner: (t) => finalizeEvent(t, sk),
+})
+
+// NIP-07 extension or NIP-46 / Signer
+new Relay(url, { authSigner: (t) => window.nostr.signEvent(t) })
+new Relay(url, { authSigner: (t) => signer.signEvent(t) })
+
+await relay.connect()
+relay.subscribe([{ kinds: [1059], '#p': [pk] }], { onevent, onclose })
+```
+
+Behaviour with an `authSigner`:
+
+- Every AUTH challenge is answered automatically, **once per challenge**. Concurrent
+  needs for the same challenge share one answer, and only one AUTH is in flight at a time.
+- A subscription closed with `auth-required:` authenticates (waiting up to
+  [`authTimeout`](#authtimeout) for a challenge if none arrived yet) and is then
+  re-sent **once** with the same id. A second `auth-required:` closes it for real
+  and `onclose` receives the relay's reason - no retry loop. The EOSE timer is
+  paused while it waits.
+- A publish refused with `OK false "auth-required: ..."` authenticates and re-sends
+  the EVENT **once**; the promise settles from the retried OK.
+- After a reconnect the challenge is cleared, the replayed REQs follow the same
+  path, and the relay authenticates with the **new** challenge, so standing
+  subscriptions survive a drop.
+- If the signer throws, rejects, or takes longer than `authTimeout`, or the relay
+  rejects the AUTH, the subscription closes and the publish rejects with
+  `auth-required: <why>`. Nothing is left as an unhandled rejection.
+- If you set [`onauth`](#onauth) yourself, it stays in charge of answering
+  challenges and the relay does not answer them too; `authSigner` is then only
+  used when a request is refused with `auth-required:` and the current challenge
+  has not been authenticated yet.
+
+::: warning Privacy
+Every relay that sends a challenge learns the signer's pubkey. Only pass an
+`authSigner` to relays you are willing to authenticate to - for example a
+dedicated `Relay` or `RelayPool` for inbox relays, separate from the one used for
+public queries.
+:::
+
+Without an `authSigner`, behaviour is unchanged: `CLOSED` and `OK false` reach
+`onclose` / the publish rejection as before. The latest challenge is still kept
+in [`relay.challenge`](#challenge), so a handler attached after `connect()` can
+answer it.
+
 ## Properties
 
 ### url
@@ -111,6 +176,25 @@ relay.publishTimeout: number // default: 4400
 ```
 
 Milliseconds to wait for OK response after publishing.
+
+### authTimeout
+
+```ts
+relay.authTimeout: number // default: 10000
+```
+
+Milliseconds to wait for an AUTH challenge, and for `authSigner` to sign it,
+before a pending subscription closes or a publish rejects. Raise it for remote
+signers that ask the user to approve.
+
+### challenge
+
+```ts
+relay.challenge: string | undefined
+```
+
+The latest NIP-42 challenge received on the current connection. Updated on every
+AUTH message and cleared when the connection drops or is closed.
 
 ### openSubs
 
@@ -153,7 +237,8 @@ Publishes an event and waits for the relay's OK response.
 
 **Returns:** `string` - reason from the relay's OK message.
 
-**Throws:** `Error` on timeout or NACK (negative acknowledgement).
+**Throws:** `Error` on timeout or NACK (negative acknowledgement). With an
+`authSigner`, an `auth-required:` NACK is retried once after authenticating.
 
 ### subscribe
 
@@ -173,6 +258,18 @@ disconnected with no retry in flight, this throws.
 
 **Returns:** `Subscription`
 
+### auth
+
+```ts
+await relay.auth(event: NostrEvent): Promise<string>
+```
+
+Sends a signed kind 22242 event as the answer to a challenge and waits for the
+relay's OK. Use it from [`onauth`](#onauth) when you answer challenges yourself;
+with an `authSigner` the relay calls it for you.
+
+**Throws:** `Error` on timeout or when the relay rejects the AUTH.
+
 ### send
 
 ```ts
@@ -191,6 +288,17 @@ relay.close(): void
 
 Closes all subscriptions and the WebSocket connection, and cancels auto-reconnect.
 This is the explicit, final teardown - the relay will not retry after it.
+
+## Auth Callback
+
+### onauth
+
+```ts
+relay.onauth: ((challenge: string) => void) | undefined
+```
+
+Fired for every AUTH challenge. When set, it is responsible for answering (see
+[NIP-42](/api/nip42)), and an `authSigner` does not answer challenges on its own.
 
 ## Reconnect Callbacks
 
@@ -241,6 +349,7 @@ Represents an active subscription to a relay.
 | `id` | `string` | Subscription ID (readonly) |
 | `closed` | `boolean` | Whether closed |
 | `eosed` | `boolean` | Whether EOSE received |
+| `authRetried` | `boolean` | Whether the REQ was already re-sent after `auth-required` on this connection |
 | `filters` | `Filter[]` | Active filters |
 
 ### Callbacks
@@ -267,8 +376,17 @@ Sends a CLOSE message to the relay and calls `onclose`.
 subscription.reset(): void
 ```
 
-Clears the per-connection state (EOSE flag and timer) so the subscription can be
-re-fired on a fresh socket. Called for you during a reconnect.
+Clears the per-connection state (EOSE flag and timer, auth retry) so the
+subscription can be re-fired on a fresh socket. Called for you during a reconnect.
+
+#### pauseEoseTimeout
+
+```ts
+sub.pauseEoseTimeout(): void
+```
+
+Stops the EOSE timer while the relay authenticates before re-sending the REQ;
+`fire()` arms it again. Called for you.
 
 #### fire
 
