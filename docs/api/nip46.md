@@ -26,8 +26,12 @@ const signer = new NostrConnect({
   secretKey: mySecretKey,  // optional - random key generated if omitted
   secret: 'mytoken',      // optional - required by Amber/LNbits signers
   encryption: 'auto',     // optional - 'auto' (default) | 'nip44' | 'nip04'
+  perms: 'nip44_encrypt,nip44_decrypt,sign_event:13', // optional - requested at connect
+  appMetadata: { name: 'MyApp', url: 'https://myapp.com' }, // optional - sent at connect
 })
 ```
+
+`connect()` sends `[remote-signer-pubkey, secret, perms, appMetadata]` as NIP-46 defines, with `''` for a skipped position. Requesting `perms` lets the signer grant them up front instead of prompting for every call.
 
 ### Transport Encryption
 
@@ -106,7 +110,7 @@ signer.handshakeTimeout = 15000  // per-attempt connect RPC timeout (default: 15
 
 ## parseConnectionURI
 
-Parses a `nostrconnect://` or `bunker://` URI into its components. Supports multiple `relay` params, optional `secret`, and optional app metadata (`name`, `url`, `image`):
+Parses a `nostrconnect://` or `bunker://` URI into its components. Supports multiple `relay` params, optional `secret` and `perms`, and optional app metadata (`name`, `url`, `image`):
 
 ```ts
 import { parseConnectionURI } from 'nostr-core'
@@ -117,6 +121,7 @@ const opts = parseConnectionURI(
 // opts.remotePubkey  - hex pubkey
 // opts.relayUrls     - ['wss://r1.example.com', 'wss://r2.example.com']
 // opts.secret        - 'tok'
+// opts.perms         - undefined (or the `perms` param)
 // opts.appMetadata   - { name: 'MyApp' }
 ```
 
@@ -129,6 +134,8 @@ type Nip46ConnectionOptions = {
   secretKey?: Uint8Array
   secret?: string
   encryption?: 'auto' | 'nip44' | 'nip04'   // default: 'auto'
+  perms?: string                            // comma-separated method[:kind], requested at connect
+  appMetadata?: Nip46AppMetadata            // sent at connect
 }
 ```
 
@@ -141,7 +148,7 @@ type Nip46EncryptionMode = Nip46Encryption | 'auto'
 
 ## Nip46AppMetadata
 
-Extracted from URI query params when present:
+Extracted from URI query params when present, and sent to the signer at `connect()`:
 
 ```ts
 type Nip46AppMetadata = {
