@@ -3188,6 +3188,8 @@ await signer.disconnect() // graceful disconnect (sends disconnect RPC + closes 
 signer.close()            // immediate cleanup (no disconnect RPC)
 ```
 
+Auth challenges: a signer may answer with a URL the user must open to approve. Set `signer.onauthurl = url => window.open(url)`; the request keeps waiting (fresh `timeout`) for the real answer on the same id. Without a handler it rejects with `Nip46RemoteError(url)`.
+
 ## parseConnectionURI
 
 ```ts
