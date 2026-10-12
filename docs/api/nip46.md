@@ -104,6 +104,18 @@ signer.timeout = 30000           // RPC timeout in ms (default: 60s)
 signer.handshakeTimeout = 15000  // per-attempt connect RPC timeout (default: 15s)
 ```
 
+### Auth Challenges
+
+Some signers answer a request with a URL where the user must approve it first (NIP-46 auth challenge). Set `onauthurl` to open it: the request keeps waiting, with a fresh `timeout`, for the signer's real answer on the same request id.
+
+```ts
+signer.onauthurl = url => window.open(url, '_blank')
+
+const signed = await signer.signEvent(template) // resolves once the user approved
+```
+
+Without a handler, such a response rejects the request with a `Nip46RemoteError` whose message is the URL.
+
 ## parseConnectionURI
 
 Parses a `nostrconnect://` or `bunker://` URI into its components. Supports multiple `relay` params, optional `secret`, and optional app metadata (`name`, `url`, `image`):
