@@ -77,6 +77,10 @@ export type Nip46ConnectionOptions = {
   secret?: string
   /** Default: `'auto'`. */
   encryption?: Nip46EncryptionMode
+  /** Permissions to request at connect, comma-separated `method[:kind]`, e.g. `'nip44_encrypt,sign_event:13'`. */
+  perms?: string
+  /** Sent at connect so the signer can label the connection. */
+  appMetadata?: Nip46AppMetadata
 }
 
 export type Nip46AppMetadata = {
@@ -93,7 +97,7 @@ type PendingRequest = {
 
 // URI parsing
 
-export function parseConnectionURI(uri: string): Nip46ConnectionOptions & { appMetadata?: Nip46AppMetadata } {
+export function parseConnectionURI(uri: string): Nip46ConnectionOptions {
   // Accept both nostrconnect:// and bunker:// prefixes
   let normalized: string
   if (uri.startsWith('nostrconnect://')) {
@@ -117,8 +121,9 @@ export function parseConnectionURI(uri: string): Nip46ConnectionOptions & { appM
     throw new Nip46Error('Invalid connection URI: missing relay parameter', 'INVALID_URI')
   }
 
-  // Extract optional secret
+  // Extract optional secret and requested permissions
   const secret = url.searchParams.get('secret') || undefined
+  const perms = url.searchParams.get('perms') || undefined
 
   // Extract optional app metadata
   const name = url.searchParams.get('name') || undefined
@@ -128,7 +133,7 @@ export function parseConnectionURI(uri: string): Nip46ConnectionOptions & { appM
   const appMetadata: Nip46AppMetadata | undefined =
     name || appUrl || image ? { name, url: appUrl, image } : undefined
 
-  return { remotePubkey, relayUrls, secret, ...(appMetadata ? { appMetadata } : {}) }
+  return { remotePubkey, relayUrls, secret, perms, ...(appMetadata ? { appMetadata } : {}) }
 }
 
 // NostrConnect class
@@ -140,6 +145,8 @@ export class NostrConnect implements Signer {
   private publicKey: string
   private relay!: Relay
   private secret?: string
+  private perms?: string
+  private appMetadata?: Nip46AppMetadata
   private _connected = false
   private pendingRequests = new Map<string, PendingRequest>()
   private sub: { close: (reason?: string) => void } | undefined
@@ -161,6 +168,8 @@ export class NostrConnect implements Signer {
     this.secretKey = opts.secretKey || randomBytes(32)
     this.publicKey = getPublicKey(this.secretKey)
     this.secret = opts.secret
+    this.perms = opts.perms
+    this.appMetadata = opts.appMetadata
     this.encryptionMode = opts.encryption ?? 'auto'
     this.encryptionType = this.encryptionMode === 'nip04' ? 'nip04' : 'nip44'
   }
@@ -204,10 +213,10 @@ export class NostrConnect implements Signer {
         },
       )
 
-      // NIP-46: connect params are [remote-signer-pubkey, optional_secret]
-      const params = this.secret
-        ? [this.remotePubkey, this.secret]
-        : [this.remotePubkey]
+      // NIP-46: [remote-signer-pubkey, secret, perms, client metadata]; '' holds a skipped position
+      const metadata = this.appMetadata ? JSON.stringify(this.appMetadata) : ''
+      const params = [this.remotePubkey, this.secret ?? '', this.perms ?? '', metadata]
+      while (params[params.length - 1] === '') params.pop()
 
       // In 'auto' mode start on NIP-44 (spec + Amber) and fall back to NIP-04
       // only if the handshake goes unanswered. A signer that *replies* in

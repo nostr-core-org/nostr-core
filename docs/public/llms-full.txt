@@ -3163,6 +3163,8 @@ const signer = new NostrConnect({
   relayUrls: ['wss://relay1.example.com', 'wss://relay2.example.com'],
   secretKey: mySecretKey, // optional - random key generated if omitted
   secret: 'mytoken',     // optional - sent with connect handshake
+  perms: 'nip44_encrypt,sign_event:13', // optional - permissions requested at connect
+  appMetadata: { name: 'MyApp' },       // optional - client metadata sent at connect
 })
 
 await signer.connect() // tries each relay until one succeeds
@@ -3193,9 +3195,10 @@ signer.close()            // immediate cleanup (no disconnect RPC)
 ```ts
 import { parseConnectionURI } from 'nostr-core'
 
-const { remotePubkey, relayUrls, secret, appMetadata } = parseConnectionURI('nostrconnect://<pubkey>?relay=wss://...')
+const { remotePubkey, relayUrls, secret, perms, appMetadata } = parseConnectionURI('nostrconnect://<pubkey>?relay=wss://...')
 // relayUrls: string[] - supports multiple relay params
 // secret: string | undefined
+// perms: string | undefined - comma-separated method[:kind]
 // appMetadata: { name?, url?, image? } | undefined
 ```
 
@@ -3207,6 +3210,8 @@ type Nip46ConnectionOptions = {
   relayUrls: string[]
   secretKey?: Uint8Array
   secret?: string
+  perms?: string                  // requested at connect
+  appMetadata?: Nip46AppMetadata  // sent at connect
 }
 
 type Nip46Method =
