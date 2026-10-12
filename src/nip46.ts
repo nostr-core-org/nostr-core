@@ -86,6 +86,7 @@ export type Nip46AppMetadata = {
 }
 
 type PendingRequest = {
+  method: Nip46Method
   resolve: (result: string) => void
   reject: (err: Error) => void
   timeout: ReturnType<typeof setTimeout>
@@ -150,6 +151,12 @@ export class NostrConnect implements Signer {
   public timeout = 60000
   /** Per-attempt timeout for the initial `connect` RPC, in ms. */
   public handshakeTimeout = 15000
+  /**
+   * Called with a URL when the signer needs the user to approve elsewhere
+   * (NIP-46 auth challenge). Open it: the request keeps waiting, with a fresh
+   * `timeout`, for the signer's answer. Without a handler the request rejects.
+   */
+  public onauthurl: ((url: string) => void) | undefined
 
   constructor(connectionOrOpts: string | Nip46ConnectionOptions) {
     const opts = typeof connectionOrOpts === 'string'
@@ -204,10 +211,10 @@ export class NostrConnect implements Signer {
         },
       )
 
-      // Send connect RPC with optional secret
+      // NIP-46: connect params are [remote-signer-pubkey, optional_secret]
       const params = this.secret
-        ? [this.publicKey, this.secret]
-        : [this.publicKey]
+        ? [this.remotePubkey, this.secret]
+        : [this.remotePubkey]
 
       // In 'auto' mode start on NIP-44 (spec + Amber) and fall back to NIP-04
       // only if the handshake goes unanswered. A signer that *replies* in
@@ -375,12 +382,8 @@ export class NostrConnect implements Signer {
     const event = finalizeEvent(eventTemplate, this.secretKey)
 
     return new Promise<string>((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        this.pendingRequests.delete(id)
-        reject(new Nip46TimeoutError(`Request timed out: ${method}`))
-      }, timeoutMs ?? this.timeout)
-
-      this.pendingRequests.set(id, { resolve, reject, timeout })
+      const timeout = this._expireAfter(id, method, timeoutMs ?? this.timeout)
+      this.pendingRequests.set(id, { method, resolve, reject, timeout })
 
       this.relay.publish(event).catch((err) => {
         clearTimeout(timeout)
@@ -388,6 +391,14 @@ export class NostrConnect implements Signer {
         reject(new Nip46Error(`Failed to publish ${method}: ${(err as Error).message}`))
       })
     })
+  }
+
+  private _expireAfter(id: string, method: Nip46Method, ms: number): ReturnType<typeof setTimeout> {
+    return setTimeout(() => {
+      const pending = this.pendingRequests.get(id)
+      this.pendingRequests.delete(id)
+      pending?.reject(new Nip46TimeoutError(`Request timed out: ${method}`))
+    }, ms)
   }
 
   private _handleResponse(event: NostrEvent): void {
@@ -416,6 +427,14 @@ export class NostrConnect implements Signer {
     if (!pending) return
 
     clearTimeout(pending.timeout)
+
+    // Auth challenge: the user approves at the URL, the answer follows on the same id.
+    if (response.result === 'auth_url' && response.error && this.onauthurl) {
+      pending.timeout = this._expireAfter(response.id, pending.method, this.timeout)
+      this.onauthurl(response.error)
+      return
+    }
+
     this.pendingRequests.delete(response.id)
 
     if (response.error) {

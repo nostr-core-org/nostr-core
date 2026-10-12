@@ -237,8 +237,10 @@ Publishes an event and waits for the relay's OK response.
 
 **Returns:** `string` - reason from the relay's OK message.
 
-**Throws:** `Error` on timeout or NACK (negative acknowledgement). With an
-`authSigner`, an `auth-required:` NACK is retried once after authenticating.
+**Throws:** `Error` on timeout or NACK (negative acknowledgement). On a NACK the
+error's `message` is the relay's reason as sent; read it with
+[`parseRelayReason`](#parserelayreason). With an `authSigner`, an
+`auth-required:` NACK is retried once after authenticating.
 
 ### subscribe
 
@@ -358,7 +360,7 @@ Represents an active subscription to a relay.
 |----------|------|-------------|
 | `onevent` | `(evt: NostrEvent) => void` | Called for each matching event |
 | `oneose` | `(() => void)?` | Called when stored events are exhausted |
-| `onclose` | `((reason: string) => void)?` | Called when subscription closes |
+| `onclose` | `((reason: string) => void)?` | Called when subscription closes. A relay's `CLOSED` reason is passed as sent; read it with [`parseRelayReason`](#parserelayreason) |
 
 ### Methods
 
@@ -408,3 +410,27 @@ type SubscriptionParams = {
   eoseTimeout?: number
 }
 ```
+
+---
+
+## Relay Reasons
+
+`OK` and `CLOSED` messages carry a reason that may start with a machine-readable prefix (`"<prefix>: <message>"`): the NIP-01 prefixes plus `auth-required` from NIP-42.
+
+### parseRelayReason
+
+```ts
+function parseRelayReason(reason: string): { prefix?: RelayReasonPrefix; message: string }
+
+type RelayReasonPrefix =
+  | 'duplicate' | 'pow' | 'blocked' | 'rate-limited' | 'invalid'
+  | 'restricted' | 'mute' | 'error' | 'auth-required'
+```
+
+```ts
+parseRelayReason('rate-limited: slow down') // { prefix: 'rate-limited', message: 'slow down' }
+parseRelayReason('something went wrong')    // { message: 'something went wrong' }
+```
+
+An unknown or missing prefix gives `{ message }` only. Use it on a `Subscription`'s `onclose` reason, or on `publishDetailed` results (which already include it).
+

@@ -7,8 +7,30 @@ import { normalizeURL } from './utils.js'
 export type SubscriptionParams = {
   onevent?: (evt: NostrEvent) => void
   oneose?: () => void
+  /** Gets the relay's `CLOSED` reason as sent; see {@link parseRelayReason}. */
   onclose?: (reason: string) => void
   eoseTimeout?: number
+}
+
+const REASON_PREFIXES = ['duplicate', 'pow', 'blocked', 'rate-limited', 'invalid', 'restricted', 'mute', 'error', 'auth-required'] as const
+
+/** Machine-readable prefix of an `OK` or `CLOSED` reason: NIP-01, plus `auth-required` (NIP-42). */
+export type RelayReasonPrefix = (typeof REASON_PREFIXES)[number]
+
+/**
+ * Split an `OK` or `CLOSED` reason into its prefix and the human-readable message.
+ *
+ * ```ts
+ * parseRelayReason('rate-limited: slow down') // { prefix: 'rate-limited', message: 'slow down' }
+ * parseRelayReason('something went wrong')    // { message: 'something went wrong' }
+ * ```
+ */
+export function parseRelayReason(reason: string): { prefix?: RelayReasonPrefix; message: string } {
+  const text = reason.trim()
+  const match = /^([a-z-]+):\s*(.*)$/s.exec(text)
+  return match && (REASON_PREFIXES as readonly string[]).includes(match[1])
+    ? { prefix: match[1] as RelayReasonPrefix, message: match[2] }
+    : { message: text }
 }
 
 /**

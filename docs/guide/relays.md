@@ -116,6 +116,26 @@ const results = await pool.publish(relays, event)
 // results is an array of successful relay responses
 ```
 
+To see which relays accepted and why the others refused, use `publishDetailed`.
+It returns one result per relay and never rejects for relay trouble:
+
+```ts
+const results = await pool.publishDetailed(relays, event, {
+  onResult(r) {
+    if (r.ok) console.log('sent via', r.url) // fires as each relay answers
+  },
+})
+
+for (const r of results) {
+  if (!r.ok) console.log(r.url, r.prefix, r.message) // e.g. 'rate-limited', 'slow down'
+}
+```
+
+`prefix` is the machine-readable part of the relay's reason (`duplicate`, `pow`,
+`blocked`, `rate-limited`, `invalid`, `restricted`, `mute`, `error`,
+`auth-required`). `parseRelayReason(reason)` does the same split for any `OK` or
+`CLOSED` reason, such as the one passed to `onclose`.
+
 ### Querying
 
 Fetch events synchronously from multiple relays:

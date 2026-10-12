@@ -152,7 +152,7 @@ export type {
 
 // NIP-59
 export { createRumor, createSeal, createWrap, unwrap } from './nip59.js'
-export type { Rumor } from './nip59.js'
+export type { Rumor, GiftWrapOptions } from './nip59.js'
 
 // NIP-65
 export { parseRelayList, createRelayListEventTemplate, createRelayListEvent, getReadRelays, getWriteRelays } from './nip65.js'
@@ -179,8 +179,8 @@ export { fetchRelayInfo, supportsNip, Nip11Error } from './nip11.js'
 export type { RelayInfo } from './nip11.js'
 
 // NIP-17
-export { wrapDirectMessage, unwrapDirectMessage } from './nip17.js'
-export type { DirectMessage } from './nip17.js'
+export { wrapDirectMessage, unwrapDirectMessage, createMessage, unwrapMessage } from './nip17.js'
+export type { DirectMessage, MessageKind, MessageParams, UnwrappedMessage } from './nip17.js'
 
 // NIP-21
 export { encodeNostrURI, decodeNostrURI, isNostrURI } from './nip21.js'
@@ -425,10 +425,10 @@ export { createOrderEventTemplate, createOrderEvent, parseOrder, ORDER_KIND } fr
 export type { P2POrder, OrderType, OrderStatus } from './nip69.js'
 
 // Networking
-export { Relay, Subscription } from './relay.js'
-export type { SubscriptionParams, ReconnectOptions, RelayOptions, AuthSigner } from './relay.js'
+export { Relay, Subscription, parseRelayReason } from './relay.js'
+export type { SubscriptionParams, ReconnectOptions, RelayOptions, AuthSigner, RelayReasonPrefix } from './relay.js'
 export { RelayPool } from './pool.js'
-export type { SubCloser, PoolSubscribeParams } from './pool.js'
+export type { SubCloser, PoolSubscribeParams, PublishResult } from './pool.js'
 
 // Blossom Media (NIP-B7 / BUD)
 export * as blossom from './blossom.js'

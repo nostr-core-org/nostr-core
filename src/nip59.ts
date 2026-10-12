@@ -19,6 +19,16 @@ export type Rumor = {
   pubkey: string
 }
 
+/** Options shared by {@link createSeal} and {@link createWrap}. */
+export type GiftWrapOptions = {
+  /**
+   * Extra tags for the event, e.g. a NIP-40 `['expiration', '<unix seconds>']`
+   * for disappearing messages. They are visible to relays, so never put
+   * anything private here.
+   */
+  tags?: string[][]
+}
+
 // Helpers
 
 function randomTimestamp(): number {
@@ -43,6 +53,7 @@ export function createSeal(
   rumor: Rumor,
   senderSecretKey: Uint8Array,
   recipientPubkey: string,
+  opts?: GiftWrapOptions,
 ): NostrEvent {
   const convKey = nip44.getConversationKey(senderSecretKey, recipientPubkey)
   const encrypted = nip44.encrypt(JSON.stringify(rumor), convKey)
@@ -50,7 +61,7 @@ export function createSeal(
   return finalizeEvent(
     {
       kind: SEAL_KIND,
-      tags: [],
+      tags: opts?.tags ?? [],
       content: encrypted,
       created_at: randomTimestamp(),
     },
@@ -61,6 +72,7 @@ export function createSeal(
 export function createWrap(
   seal: NostrEvent,
   recipientPubkey: string,
+  opts?: GiftWrapOptions,
 ): NostrEvent {
   const ephemeralKey = generateSecretKey()
   const convKey = nip44.getConversationKey(ephemeralKey, recipientPubkey)
@@ -69,7 +81,7 @@ export function createWrap(
   return finalizeEvent(
     {
       kind: GIFT_WRAP_KIND,
-      tags: [['p', recipientPubkey]],
+      tags: [['p', recipientPubkey], ...(opts?.tags ?? [])],
       content: encrypted,
       created_at: randomTimestamp(),
     },
@@ -106,6 +118,11 @@ export function unwrap(
   // Verify pubkey consistency: seal.pubkey must match rumor.pubkey
   if (seal.pubkey !== rumor.pubkey) {
     throw new Error('Seal pubkey does not match rumor pubkey - possible impersonation')
+  }
+
+  // The rumor is unsigned: only its hash binds the id to the content
+  if (getEventHash(rumor) !== rumor.id) {
+    throw new Error('Rumor id does not match its content')
   }
 
   return rumor

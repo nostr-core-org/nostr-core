@@ -121,6 +121,57 @@ Publishes an event to multiple relays. Failed publishes are silently dropped.
 
 **Returns:** `string[]` - array of successful relay responses.
 
+::: tip
+`publish` cannot tell you which relays accepted, or why one refused. Use
+[`publishDetailed`](#publishdetailed) when you need per-relay outcomes.
+:::
+
+### publishDetailed
+
+```ts
+await pool.publishDetailed(
+  relayUrls: string[],
+  event: NostrEvent,
+  opts?: { onResult?: (result: PublishResult) => void }
+): Promise<PublishResult[]>
+```
+
+Publishes an event to multiple relays and reports every relay's outcome. There is
+one result per relay URL (normalised and deduplicated), in input order. Relay
+trouble never rejects the promise: a failed connection, a timeout or an
+`OK false` all become `ok: false` with a `reason`.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `relayUrls` | `string[]` | Relay URLs to publish to |
+| `event` | `NostrEvent` | Signed event |
+| `opts.onResult` | `(result: PublishResult) => void` | Called once per relay as soon as its outcome is known |
+
+**Returns:** [`PublishResult[]`](#publishresult)
+
+```ts
+const results = await pool.publishDetailed(relays, event)
+
+const accepted = results.filter(r => r.ok)
+const retry = results.filter(r => !r.ok && (r.prefix === 'rate-limited' || r.prefix === 'error'))
+const needsAuth = results.filter(r => r.prefix === 'auth-required')
+```
+
+Show "sent" on the first acceptance without waiting for slower relays:
+
+```ts
+const firstAccept = new Promise<PublishResult | null>(resolve => {
+  pool.publishDetailed(relays, event, {
+    onResult: r => { if (r.ok) resolve(r) },
+  }).then(() => resolve(null)) // nobody accepted
+})
+```
+
+::: tip
+A `duplicate:` refusal means the relay already holds the event, so most apps
+treat it as delivered.
+:::
+
 ### querySync
 
 ```ts
@@ -167,6 +218,28 @@ type SubCloser = {
 }
 ```
 
+### PublishResult
+
+```ts
+type PublishResult = {
+  url: string
+  ok: boolean
+  reason: string
+  prefix?: RelayReasonPrefix
+  message: string
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `url` | `string` | Normalised relay URL |
+| `ok` | `boolean` | `true` when the relay answered `OK` with `true` |
+| `reason` | `string` | The relay's `OK` reason, or the local error when it never answered (`connection failed`, `publish timed out`, ...) |
+| `prefix` | [`RelayReasonPrefix?`](/api/relay#parserelayreason) | Machine-readable prefix of `reason`, if it has a known one |
+| `message` | `string` | `reason` without its prefix, trimmed |
+
+`prefix` and `message` come from [`parseRelayReason`](/api/relay#parserelayreason).
+
 ### PoolSubscribeParams
 
 ```ts
@@ -181,7 +254,7 @@ type PoolSubscribeParams = SubscriptionParams & {
 |-------|------|-------------|
 | `onevent` | `(evt: NostrEvent) => void` | Called for each event |
 | `oneose` | `() => void` | Called when all relays finish |
-| `onclose` | `(reason: string) => void` | Called on subscription close |
+| `onclose` | `(reason: string) => void` | Called on subscription close. Read the reason with [`parseRelayReason`](/api/relay#parserelayreason) |
 | `eoseTimeout` | `number?` | EOSE timeout per relay |
 | `maxWait` | `number?` | Connection timeout |
 | `id` | `string?` | Custom subscription ID |
