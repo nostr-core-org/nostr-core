@@ -15,6 +15,7 @@ new RelayPool(opts?: {
   websocketImplementation?: typeof WebSocket
   maxWaitForConnection?: number
   reconnect?: ReconnectOptions | false
+  authSigner?: AuthSigner
 })
 ```
 
@@ -23,12 +24,31 @@ new RelayPool(opts?: {
 | `opts.websocketImplementation` | `typeof WebSocket?` | - | Custom WebSocket class |
 | `opts.maxWaitForConnection` | `number?` | `3000` | Default connection timeout in ms |
 | `opts.reconnect` | `ReconnectOptions \| false` | enabled | Auto-reconnect settings applied to every relay in the pool. See [Relay](/api/relay#auto-reconnect) |
+| `opts.authSigner` | `AuthSigner?` | - | Opt-in NIP-42 signer given to every relay the pool creates. See [Relay](/api/relay#nip-42-authentication) |
 
 ::: tip
 Pooled relays auto-reconnect and replay their subscriptions by default, so a
 network blip no longer silently kills a standing `pool.subscribe()`. Use
 [`getRelay`](#getrelay) to attach `ondisconnect` / `onreconnect` handlers.
 :::
+
+### NIP-42 relays
+
+Relays created inside the pool never see an `onauth` handler before they
+connect, so a relay that demands AUTH (such as a NIP-17 inbox relay serving
+`kind:1059`) would close the subscription with `auth-required:`. Pass an
+`authSigner` and every pooled relay answers its challenges and retries an
+`auth-required` REQ or EVENT once after authenticating:
+
+```ts
+import { RelayPool, finalizeEvent } from 'nostr-core'
+
+const inboxPool = new RelayPool({ authSigner: (t) => finalizeEvent(t, sk) })
+const wraps = await inboxPool.querySync(inboxRelays, { kinds: [1059], '#p': [pk] })
+```
+
+Every relay the pool talks to then learns the signer's pubkey, so keep a
+separate pool without a signer for public queries.
 
 ## Methods
 

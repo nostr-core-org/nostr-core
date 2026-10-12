@@ -52,7 +52,7 @@ nostr-core lets agents and applications pay invoices, check balances, create inv
 - [NIP-31](api/nip31.md): Unknown event kinds (addAltTag, getAltTag)
 - [NIP-36](api/nip36.md): Sensitive content / content warning (addContentWarning, getContentWarning, hasContentWarning)
 - [NIP-40](api/nip40.md): Expiration timestamp (addExpiration, getExpiration, isExpired)
-- [NIP-42](api/nip42.md): Client authentication to relays (createAuthEvent, verifyAuthEvent, relay.auth)
+- [NIP-42](api/nip42.md): Client authentication to relays (createAuthEvent, verifyAuthEvent, relay.auth, relay.challenge, `authSigner` option on Relay/RelayPool that answers challenges and retries auth-required REQs/EVENTs once)
 - [NIP-44](api/nip44.md): ChaCha20 authenticated encryption (recommended)
 - [NIP-46](api/nip46.md): Remote signing via Nostr Connect (NostrConnect class) - bunker:// URIs, multi-relay fallback, NIP-44 transport with NIP-04 fallback for legacy bunkers, app metadata
 - [NIP-48](api/nip48.md): Proxy tags for bridged events (addProxyTag, getProxyTags, isProxied)

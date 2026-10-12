@@ -2,6 +2,7 @@ import {
   Relay,
   Subscription,
   parseRelayReason,
+  type AuthSigner,
   type ReconnectOptions,
   type RelayReasonPrefix,
   type SubscriptionParams,
@@ -33,23 +34,34 @@ export class RelayPool {
   private maxWaitForConnection: number
   private _WebSocket?: typeof WebSocket
   private _reconnect?: ReconnectOptions | false
+  private _authSigner?: AuthSigner
 
   constructor(opts?: {
     websocketImplementation?: typeof WebSocket
     maxWaitForConnection?: number
     /** Auto-reconnect settings applied to every relay in the pool. Pass `false` to disable. */
     reconnect?: ReconnectOptions | false
+    /**
+     * Opt-in NIP-42 signer given to every relay the pool creates: challenges are
+     * answered, and `auth-required` refusals are retried once after AUTH.
+     */
+    authSigner?: AuthSigner
   }) {
     this._WebSocket = opts?.websocketImplementation
     this.maxWaitForConnection = opts?.maxWaitForConnection || 3000
     this._reconnect = opts?.reconnect
+    this._authSigner = opts?.authSigner
   }
 
   async ensureRelay(url: string, opts?: { connectionTimeout?: number }): Promise<Relay> {
     url = normalizeURL(url)
     let relay = this.relays.get(url)
     if (!relay) {
-      relay = new Relay(url, { websocketImplementation: this._WebSocket, reconnect: this._reconnect })
+      relay = new Relay(url, {
+        websocketImplementation: this._WebSocket,
+        reconnect: this._reconnect,
+        authSigner: this._authSigner,
+      })
       relay.publishTimeout = 5000
       this.relays.set(url, relay)
     }

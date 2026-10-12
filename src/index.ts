@@ -426,7 +426,7 @@ export type { P2POrder, OrderType, OrderStatus } from './nip69.js'
 
 // Networking
 export { Relay, Subscription, parseRelayReason } from './relay.js'
-export type { SubscriptionParams, ReconnectOptions, RelayReasonPrefix } from './relay.js'
+export type { SubscriptionParams, ReconnectOptions, RelayOptions, AuthSigner, RelayReasonPrefix } from './relay.js'
 export { RelayPool } from './pool.js'
 export type { SubCloser, PoolSubscribeParams, PublishResult } from './pool.js'
 
