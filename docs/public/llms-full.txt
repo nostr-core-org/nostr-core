@@ -3297,7 +3297,7 @@ Wraps a seal in a kind 1059 gift wrap using a random ephemeral keypair. NIP-44 e
 function unwrap(wrap: NostrEvent, recipientSecretKey: Uint8Array): Rumor
 ```
 
-Unwraps a gift wrap: decrypts wrap, verifies seal signature, decrypts seal, validates `seal.pubkey === rumor.pubkey`. Throws on wrong kind, verification failure, decryption failure, or pubkey mismatch.
+Unwraps a gift wrap: decrypts wrap, verifies seal signature, decrypts seal, validates `seal.pubkey === rumor.pubkey`, recomputes the rumor id. Throws on wrong kind, verification failure, decryption failure, pubkey mismatch, or a forged rumor id.
 
 ## How It Works
 

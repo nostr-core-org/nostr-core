@@ -108,5 +108,10 @@ export function unwrap(
     throw new Error('Seal pubkey does not match rumor pubkey - possible impersonation')
   }
 
+  // The rumor is unsigned: only its hash binds the id to the content
+  if (getEventHash(rumor) !== rumor.id) {
+    throw new Error('Rumor id does not match its content')
+  }
+
   return rumor
 }

@@ -91,6 +91,7 @@ Unwraps a gift-wrapped direct message and returns the decrypted content with sen
 - Invalid gift wrap or seal
 - Decryption failure
 - Pubkey mismatch (impersonation)
+- Forged rumor id (does not hash to the content)
 - Wrong event kind (not a kind 14 DM)
 
 ```ts

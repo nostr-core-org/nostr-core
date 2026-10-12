@@ -102,7 +102,7 @@ const wrap = nip59.createWrap(seal, recipientPubkey)
 function unwrap(wrap: NostrEvent, recipientSecretKey: Uint8Array): Rumor
 ```
 
-Unwraps a gift wrap to recover the original rumor. Decrypts the wrap, verifies the seal signature, decrypts the seal, and validates that `seal.pubkey === rumor.pubkey` to prevent impersonation.
+Unwraps a gift wrap to recover the original rumor. Decrypts the wrap, verifies the seal signature, decrypts the seal, validates that `seal.pubkey === rumor.pubkey` to prevent impersonation, and recomputes the rumor id so a sender cannot forge it.
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
@@ -116,6 +116,7 @@ Unwraps a gift wrap to recover the original rumor. Decrypts the wrap, verifies t
 - Seal signature verification failure
 - Decryption failure
 - Pubkey mismatch between seal and rumor (impersonation attempt)
+- Rumor id that does not hash to its content (forged id)
 
 ```ts
 const rumor = nip59.unwrap(giftWrap, recipientSecretKey)
