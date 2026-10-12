@@ -425,10 +425,10 @@ export { createOrderEventTemplate, createOrderEvent, parseOrder, ORDER_KIND } fr
 export type { P2POrder, OrderType, OrderStatus } from './nip69.js'
 
 // Networking
-export { Relay, Subscription } from './relay.js'
-export type { SubscriptionParams, ReconnectOptions } from './relay.js'
+export { Relay, Subscription, parseRelayReason } from './relay.js'
+export type { SubscriptionParams, ReconnectOptions, RelayReasonPrefix } from './relay.js'
 export { RelayPool } from './pool.js'
-export type { SubCloser, PoolSubscribeParams } from './pool.js'
+export type { SubCloser, PoolSubscribeParams, PublishResult } from './pool.js'
 
 // Blossom Media (NIP-B7 / BUD)
 export * as blossom from './blossom.js'

@@ -24,8 +24,8 @@ nostr-core lets agents and applications pay invoices, check balances, create inv
 - [Errors](api/errors.md): Error class hierarchy with codes (8 classes including LightningAddressError, FiatConversionError)
 - [Crypto](api/crypto.md): Key generation (generateSecretKey, getPublicKey)
 - [Event](api/event.md): Nostr event signing, verification, hashing
-- [Relay](api/relay.md): Single relay WebSocket connection and subscriptions
-- [RelayPool](api/pool.md): Multi-relay connection management
+- [Relay](api/relay.md): Single relay WebSocket connection and subscriptions; parseRelayReason splits NIP-01 OK/CLOSED reasons into prefix + message
+- [RelayPool](api/pool.md): Multi-relay connection management; publishDetailed returns per-relay publish outcomes (url, ok, reason, prefix, message)
 - [Filter](api/filter.md): Event filtering types and match functions
 - [Signer](api/signer.md): Unified Signer interface for secret keys, browser extensions (NIP-07), and remote signers (NIP-46) with NIP-04 and NIP-44 encryption
 - [NIP-02](api/nip02.md): Follow list / contact list (createFollowListEvent, parseFollowList, isFollowing)
