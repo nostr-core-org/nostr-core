@@ -1,6 +1,6 @@
 {
   "name": "nostr-core",
-  "version": "1.0.4",
+  "version": "1.1.0",
   "description": "Comprehensive Nostr protocol toolkit and NWC (Nostr Wallet Connect) client",
   "type": "module",
   "main": "./dist/index.js",
