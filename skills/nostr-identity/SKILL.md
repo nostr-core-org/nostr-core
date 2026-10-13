@@ -121,7 +121,8 @@ await signer.connect()
 const signer2 = new NostrConnect({
   remotePubkey: 'hex_pubkey',
   relayUrls: ['wss://relay1.example.com', 'wss://relay2.example.com'],
-  secret: 'optional_token'
+  secret: 'optional_token',
+  perms: 'nip44_encrypt,nip44_decrypt,sign_event:1' // ask for these up front, fewer prompts
 })
 await signer2.connect()
 
