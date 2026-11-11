@@ -19,12 +19,26 @@ export type CashuProof = {
   C: string
 }
 
+/**
+ * A proof as Cashu libraries hand it out. cashu-ts 4 gives `amount` as an
+ * `Amount` object, which JSON writes as text ("8"); a bigint or a decimal
+ * string is accepted as well. Writers turn it into the number NIP-60 wants.
+ */
+export type CashuProofInput = Omit<CashuProof, 'amount'> & {
+  amount: number | bigint | string | { toJSON(): unknown }
+}
+
 /** Decrypted content of a kind 7375 token event. */
 export type CashuToken = {
   mint: string
   proofs: CashuProof[]
   unit?: string
   del?: string[]
+}
+
+/** A token to write: like {@link CashuToken}, with proofs as libraries hand them out. */
+export type CashuTokenInput = Omit<CashuToken, 'proofs'> & {
+  proofs: CashuProofInput[]
 }
 
 /** Decrypted content of a kind 17375 wallet event. */
@@ -130,12 +144,16 @@ export function parseWalletEvent(
  * NIP-44 encrypted to self.
  */
 export function createTokenEventTemplate(
-  token: CashuToken,
+  token: CashuTokenInput,
   secretKey: Uint8Array,
 ): EventTemplate {
   const payload: Record<string, unknown> = {
     mint: token.mint,
-    proofs: token.proofs,
+    proofs: token.proofs.map(p => {
+      const amount = proofAmount(p.amount)
+      if (amount === null) throw new Error('Invalid Cashu proof: amount must be a number or a positive whole number')
+      return { ...p, amount }
+    }),
   }
   if (token.unit) payload.unit = token.unit
   if (token.del?.length) payload.del = token.del
@@ -151,7 +169,7 @@ export function createTokenEventTemplate(
  * Create and sign a kind 7375 token event.
  */
 export function createTokenEvent(
-  token: CashuToken,
+  token: CashuTokenInput,
   secretKey: Uint8Array,
 ): NostrEvent {
   return finalizeEvent(createTokenEventTemplate(token, secretKey), secretKey)
@@ -172,11 +190,13 @@ export function parseTokenEvent(
     throw new Error('Invalid token event: missing mint or proofs')
   }
   const proofs = (data.proofs as Record<string, unknown>[]).map(p => {
-    if (typeof p.id !== 'string' || typeof p.amount !== 'number' ||
+    // Amounts written as text ("8") by cashu-ts 4 based wallets are read as numbers.
+    const amount = proofAmount(p.amount)
+    if (typeof p.id !== 'string' || amount === null ||
         typeof p.secret !== 'string' || typeof p.C !== 'string') {
       throw new Error('Invalid Cashu proof: missing required fields (id, amount, secret, C)')
     }
-    return p as unknown as CashuProof
+    return { ...p, amount } as unknown as CashuProof
   })
   return {
     mint: data.mint as string,
@@ -367,6 +387,31 @@ export function getHistoryFilter(pubkey: string) {
 }
 
 // ── Utilities ──────────────────────────────────────────────────────────
+
+/**
+ * A proof amount as the number NIP-60 stores, or null when it cannot be one.
+ *
+ * A number is kept exactly as given, as before. Anything else (text such as
+ * "8", a bigint, or an object with toJSON() such as cashu-ts 4's Amount)
+ * must be a positive whole number within JavaScript's safe range.
+ */
+function proofAmount(value: unknown): number | null {
+  if (typeof value === 'number') return value
+  const plain = hasToJSON(value) ? value.toJSON() : value
+  if (typeof plain === 'number') return Number.isSafeInteger(plain) && plain > 0 ? plain : null
+  if (typeof plain === 'bigint') {
+    return plain > 0n && plain <= BigInt(Number.MAX_SAFE_INTEGER) ? Number(plain) : null
+  }
+  if (typeof plain === 'string' && /^[1-9]\d*$/.test(plain)) {
+    const amount = Number(plain)
+    return Number.isSafeInteger(amount) ? amount : null
+  }
+  return null
+}
+
+function hasToJSON(value: unknown): value is { toJSON(): unknown } {
+  return value !== null && typeof value === 'object' && typeof (value as { toJSON?: unknown }).toJSON === 'function'
+}
 
 /**
  * Sum the total amount of a set of Cashu proofs.

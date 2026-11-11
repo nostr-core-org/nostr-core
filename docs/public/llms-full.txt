@@ -3661,8 +3661,8 @@ import { nip60 } from 'nostr-core'
 
 - `createWalletEvent(wallet, secretKey)` / `createWalletEventTemplate(wallet, secretKey)` — Kind 17375 wallet with privkey + mint list
 - `parseWalletEvent(event, secretKey)` — Decrypt wallet event → `{ privkey, mints }`
-- `createTokenEvent(token, secretKey)` / `createTokenEventTemplate(token, secretKey)` — Kind 7375 token with proofs
-- `parseTokenEvent(event, secretKey)` — Decrypt token event → `{ mint, proofs, unit, del }`
+- `createTokenEvent(token, secretKey)` / `createTokenEventTemplate(token, secretKey)` — Kind 7375 token with proofs; each proof `amount` (a number as given; a decimal string, bigint or cashu-ts `Amount` must be a positive whole number) is written as a number
+- `parseTokenEvent(event, secretKey)` — Decrypt token event → `{ mint, proofs, unit, del }`; amounts come back as numbers, also when written as text
 - `createHistoryEvent(history, secretKey)` / `createHistoryEventTemplate(history, secretKey)` — Kind 7376 transaction record
 - `parseHistoryEvent(event, secretKey)` — Decrypt history → `{ direction, amount, unit, events }`
 - `createQuoteEvent(quote, secretKey)` / `createQuoteEventTemplate(quote, secretKey)` — Kind 7374 pending quote
