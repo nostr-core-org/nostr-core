@@ -59,6 +59,10 @@ type CashuProof = {
 | `secret` | `string` | Unique secret for this proof |
 | `C` | `string` | Blinded signature from the mint |
 
+### CashuProofInput
+
+What `createTokenEvent` accepts: a `CashuProof` whose `amount` may also be a decimal string, a `bigint`, or an object with `toJSON()` such as cashu-ts 4's `Amount`. It is always stored as a number, as NIP-60 specifies.
+
 ## CashuToken Type
 
 ```ts
@@ -163,11 +167,13 @@ console.log(wallet.mints) // ['https://mint.example.com', ...]
 ## nip60.createTokenEvent
 
 ```ts
-function createTokenEvent(token: CashuToken, secretKey: Uint8Array): NostrEvent
-function createTokenEventTemplate(token: CashuToken, secretKey: Uint8Array): EventTemplate
+function createTokenEvent(token: CashuTokenInput, secretKey: Uint8Array): NostrEvent
+function createTokenEventTemplate(token: CashuTokenInput, secretKey: Uint8Array): EventTemplate
 ```
 
 Creates a kind 7375 token event storing unspent Cashu proofs. Content is NIP-44 encrypted to self.
+
+Proofs from a Cashu library can be passed as they are: every `amount` is written as a number (see `CashuProofInput`). A proof whose amount is not a positive whole number throws, since no reader could use it.
 
 ```ts
 const tokenEvent = nip60.createTokenEvent({
@@ -187,7 +193,7 @@ const tokenEvent = nip60.createTokenEvent({
 function parseTokenEvent(event: NostrEvent, secretKey: Uint8Array): CashuToken
 ```
 
-Decrypts and parses a kind 7375 token event.
+Decrypts and parses a kind 7375 token event. Proof amounts always come back as numbers; amounts other wallets wrote as text (`"8"`) are read too.
 
 ```ts
 const token = nip60.parseTokenEvent(tokenEvent, secretKey)
@@ -382,6 +388,7 @@ relay.close()
 - All content is **NIP-44 encrypted to self** (using your own keypair).
 - When proofs are spent, the old token event is **NIP-09 deleted** and a new one created with remaining proofs.
 - The `del` field in token events references destroyed event IDs for state tracking.
+- Proof amounts are JSON numbers. cashu-ts 4 serializes its `Amount` as text, so the writer converts it and the reader accepts both.
 - Deletion events MUST include `["k", "7375"]` for relay filtering.
 - The wallet `privkey` is a dedicated key for receiving NIP-61 nutzaps, not the user's Nostr key.
 - History event references with `"redeemed"` marker are stored unencrypted; all others are encrypted.

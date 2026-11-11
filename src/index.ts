@@ -281,7 +281,7 @@ export {
   WALLET_KIND, TOKEN_KIND, HISTORY_KIND, QUOTE_KIND,
 } from './nip60.js'
 export type {
-  CashuProof, CashuToken, CashuWallet, CashuHistory, CashuHistoryRef, CashuQuote,
+  CashuProof, CashuProofInput, CashuToken, CashuTokenInput, CashuWallet, CashuHistory, CashuHistoryRef, CashuQuote,
 } from './nip60.js'
 
 // NIP-61 (Nutzaps)
