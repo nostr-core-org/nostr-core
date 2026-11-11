@@ -151,7 +151,7 @@ export function createTokenEventTemplate(
     mint: token.mint,
     proofs: token.proofs.map(p => {
       const amount = proofAmount(p.amount)
-      if (amount === null) throw new Error('Invalid Cashu proof: amount must be a positive whole number')
+      if (amount === null) throw new Error('Invalid Cashu proof: amount must be a number or a positive whole number')
       return { ...p, amount }
     }),
   }
@@ -389,17 +389,28 @@ export function getHistoryFilter(pubkey: string) {
 // ── Utilities ──────────────────────────────────────────────────────────
 
 /**
- * A proof amount as the number NIP-60 stores, or null when it is not a
- * positive whole number within JavaScript's safe range.
+ * A proof amount as the number NIP-60 stores, or null when it cannot be one.
+ *
+ * A number is kept exactly as given, as before. Anything else (text such as
+ * "8", a bigint, or an object with toJSON() such as cashu-ts 4's Amount)
+ * must be a positive whole number within JavaScript's safe range.
  */
 function proofAmount(value: unknown): number | null {
-  let amount: unknown = value
-  if (amount !== null && typeof amount === 'object' && typeof (amount as { toJSON?: unknown }).toJSON === 'function') {
-    amount = (amount as { toJSON(): unknown }).toJSON()
+  if (typeof value === 'number') return value
+  const plain = hasToJSON(value) ? value.toJSON() : value
+  if (typeof plain === 'number') return Number.isSafeInteger(plain) && plain > 0 ? plain : null
+  if (typeof plain === 'bigint') {
+    return plain > 0n && plain <= BigInt(Number.MAX_SAFE_INTEGER) ? Number(plain) : null
   }
-  if (typeof amount === 'bigint') amount = amount <= BigInt(Number.MAX_SAFE_INTEGER) ? Number(amount) : NaN
-  if (typeof amount === 'string') amount = /^\d+$/.test(amount) ? Number(amount) : NaN
-  return typeof amount === 'number' && Number.isSafeInteger(amount) && amount > 0 ? amount : null
+  if (typeof plain === 'string' && /^[1-9]\d*$/.test(plain)) {
+    const amount = Number(plain)
+    return Number.isSafeInteger(amount) ? amount : null
+  }
+  return null
+}
+
+function hasToJSON(value: unknown): value is { toJSON(): unknown } {
+  return value !== null && typeof value === 'object' && typeof (value as { toJSON?: unknown }).toJSON === 'function'
 }
 
 /**
